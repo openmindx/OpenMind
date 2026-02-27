@@ -1,0 +1,248 @@
+.dojo-input {
+  flex-shrink: 0;
+  border-top: 1px solid #242424;
+  background: #181818;
+  padding: 0.55rem 0.8rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* Top bar */
+.dojo-input__topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dojo-input__config-btn {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.dojo-input__config-btn:hover { color: #999; }
+
+.dojo-input__streaming-label {
+  font-size: 0.7rem;
+  color: #7eb8f7;
+  animation: di-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes di-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* Config panel */
+.dojo-input__config {
+  background: #1c1c1c;
+  border: 1px solid #252525;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dojo-input__col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.dojo-input__row {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.dojo-input__section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #484848;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Model chips */
+.dojo-input__chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.dojo-chip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.22rem 0.55rem;
+  background: #141414;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  max-width: 200px;
+}
+
+.dojo-chip input {
+  display: none;
+}
+
+.dojo-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dojo-chip:hover {
+  border-color: #3a3a3a;
+  color: #999;
+}
+
+.dojo-chip--on {
+  border-color: #1a5acd;
+  color: #7eb8f7;
+  background: #0a1525;
+}
+
+.dojo-chip--on:hover {
+  border-color: #2a7aff;
+}
+
+/* Select */
+.dojo-input__select {
+  padding: 0.28rem 0.5rem;
+  background: #141414;
+  color: #bbb;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+/* Checkboxes */
+.dojo-input__checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.dojo-input__check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  color: #777;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dojo-input__check input {
+  accent-color: #007bff;
+  cursor: pointer;
+}
+
+.dojo-input__empty-hint {
+  font-size: 0.75rem;
+  color: #3a3a3a;
+  font-style: italic;
+}
+
+/* Prompt row */
+.dojo-input__prompt-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.dojo-input__preset-select {
+  padding: 0.25rem 0.4rem;
+  background: #141414;
+  color: #888;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  font-size: 0.73rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dojo-input__textarea {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  background: #121212;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  resize: none;
+  min-height: 2.4rem;
+  max-height: 140px;
+  overflow-y: auto;
+  line-height: 1.5;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.dojo-input__textarea:focus {
+  outline: none;
+  border-color: #1a5acd55;
+}
+
+.dojo-input__textarea:disabled {
+  opacity: 0.4;
+}
+
+/* Buttons */
+.dojo-input__btn {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.dojo-input__btn--run {
+  background: #007bff;
+  color: #fff;
+}
+
+.dojo-input__btn--run:hover {
+  background: #0066dd;
+}
+
+.dojo-input__btn--stop {
+  background: #3a1a1a;
+  color: #ff8a80;
+  border: 1px solid #5a2a2a;
+}
+
+.dojo-input__btn--stop:hover {
+  background: #4a2a2a;
+}
+
+.dojo-input__btn--off {
+  background: #1e1e1e;
+  color: #3a3a3a;
+  cursor: not-allowed;
+}
+
+/* Hint */
+.dojo-input__hint {
+  font-size: 0.68rem;
+  color: #3a3a3a;
+  padding: 0 0.1rem;
+}

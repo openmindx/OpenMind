@@ -1,0 +1,128 @@
+.dojo-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+/* Banners */
+.dojo-page__banner {
+  flex-shrink: 0;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.dojo-page__banner--offline {
+  background: #2a1a1a;
+  border-bottom: 1px solid #4a2a2a;
+  color: #ff8a80;
+}
+
+/* Scoreboard strip */
+.dojo-page__top-strip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid #222;
+  background: #161616;
+  overflow-x: auto;
+}
+
+.dojo-page__clear-btn {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 0.28rem 0.65rem;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #555;
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.dojo-page__clear-btn:hover {
+  border-color: #444;
+  color: #888;
+}
+
+/* Panel grid */
+.dojo-page__panels {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  overflow-y: auto;
+  min-height: 0;
+  align-content: start;
+}
+
+/* Empty state */
+.dojo-page__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+}
+
+.dojo-page__empty-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #3a3a3a;
+  letter-spacing: 0.05em;
+}
+
+.dojo-page__empty-sub {
+  font-size: 0.83rem;
+  color: #333;
+  text-align: center;
+  max-width: 420px;
+  margin: 0;
+}
+
+/* Judge status bar */
+.dojo-page__judge {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  background: #141428;
+  border-top: 1px solid #22223a;
+  font-size: 0.8rem;
+  color: #7eb8f7;
+}
+
+.dojo-page__judge--error {
+  background: #1e1212;
+  border-color: #3a1818;
+  color: #f44336;
+}
+
+.dojo-page__spinner {
+  display: inline-block;
+  animation: dojo-spin 0.9s linear infinite;
+  font-size: 1rem;
+}
+
+@keyframes dojo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.dojo-page__judge-model {
+  font-family: monospace;
+  font-size: 0.78rem;
+  background: #0d0d22;
+  padding: 1px 6px;
+  border-radius: 3px;
+}

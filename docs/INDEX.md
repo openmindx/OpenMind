@@ -9,6 +9,7 @@
 ## Quick Navigation
 
 - [Technical Reference](./TECHNICAL.md) — Stack, architecture, all config values, API details
+- [Dojo](./DOJO.md) — Multi-model evaluation mode: architecture, types, judge prompt, scoreboard
 - [Roadmap](./ROADMAP.md) — Planned features and todo checklist
 - [Usage Guide](./USAGE.md) — How to use the chat interface
 - [Setup Guide](./SETUP_COMPLETE.md) — Installation and configuration
@@ -48,6 +49,7 @@ Key components:
 | Document | Description |
 |----------|-------------|
 | [Technical Reference](./TECHNICAL.md) | Stack, directory layout, state, Rust commands, all config values |
+| [Dojo](./DOJO.md) | Multi-model evaluation mode — architecture, types, judge prompt, scoreboard logic |
 | [Roadmap](./ROADMAP.md) | Planned features as a checkbox todo list |
 | [OpenCode Manual](./OPENCODE_MANUAL.md) | OpenCode agent architecture, config, MCP integration |
 | [AI Components Catalog](./AI_COMPONENTS_CATALOG.md) | Available Vercel AI SDK UI components (51 total) |
@@ -63,6 +65,12 @@ OpenMind Desktop (Tauri 2)
 ├── Frontend (React 19 / TypeScript)
 │   ├── App.tsx                  — chat UI, model selector, streaming, system stats
 │   ├── lib/opencode-client.ts   — Ollama HTTP client + diagnostics
+│   ├── dojo/                    — Dojo multi-model evaluation module
+│   │   ├── DojoPage.tsx         — orchestrator: fan-out, judge, scoreboard
+│   │   ├── dojo-client.ts       — streamModelResponse(), runJudge()
+│   │   ├── dojo-types.ts        — shared types, presets, blind labels
+│   │   ├── index.ts             — barrel export
+│   │   └── components/          — ModelPanel, Scoreboard, DojoInput
 │   └── components/
 │       ├── DiagnosticsPage.tsx  — endpoint tests, model list, inference test, log
 │       ├── MarkdownMessage.tsx  — markdown + syntax-highlighted code blocks
@@ -157,13 +165,14 @@ Base URL: `http://localhost:8080`
 - **Syntax-highlighted code blocks** with language label and copy button (Prism / One Dark)
 - **Multiline textarea** input with auto-resize; Shift+Enter for newline, Enter to send
 - **Stop streaming** button — aborts in-progress generation mid-stream
+- **Dojo** — multi-model fan-out evaluation with judge scoring, blind mode, session scoreboard (see [DOJO.md](./DOJO.md))
 
 ### Planned
 
 See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 
 - **Boardroom mode** — send one prompt to N models in parallel, stream each into its own panel, synthesize a consensus answer via a judge model
-- **Dojo mode** — head-to-head model evaluation with scoring, tournament brackets, blind judging, and a running scoreboard
+- **Dojo mode** — tournament brackets, per-round replay, unattended auto-run, CSV/JSON export (core Dojo is live — see [DOJO.md](./DOJO.md) for planned enhancements)
 - **Ultimate input field** — slash commands, `@model` targeting, file drop, voice input, prompt templates, token counter, per-session history
 - **flexlayout-react multi-panel UI** — drag, drop, and resize Chat / Boardroom / Dojo / Diagnostics panels; layout presets; layout persistence; panel maximise/restore
 - Multiple named conversation sessions with sidebar
@@ -187,4 +196,4 @@ See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 
 ---
 
-*Last updated: 2026-02-27*
+*Last updated: 2026-02-27 — Dojo module added*
