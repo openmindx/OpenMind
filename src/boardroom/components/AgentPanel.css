@@ -1,0 +1,116 @@
+.agent-panel {
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-left: 3px solid var(--role-color, #555);
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 120px;
+}
+
+/* Header */
+.agent-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  background: #161616;
+  border-bottom: 1px solid #222;
+  flex-shrink: 0;
+}
+
+.agent-panel__role-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.agent-panel__model {
+  font-size: 0.75rem;
+  color: #888;
+  font-family: monospace;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* Streaming indicator dot */
+.agent-panel__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4caf50;
+  animation: ap-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ap-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.agent-panel__latency {
+  font-size: 0.7rem;
+  color: #555;
+  font-family: monospace;
+}
+
+.agent-panel__error-badge {
+  font-size: 0.68rem;
+  color: #f44336;
+  font-family: monospace;
+}
+
+/* Body */
+.agent-panel__body {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  overflow-y: auto;
+}
+
+.agent-panel__content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #d4d4d4;
+  font-family: inherit;
+}
+
+.agent-panel__placeholder {
+  color: #333;
+  font-style: italic;
+}
+
+.agent-panel__cursor {
+  display: inline-block;
+  animation: ap-blink 0.7s step-end infinite;
+  color: #4caf50;
+  margin-left: 1px;
+}
+
+@keyframes ap-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.agent-panel__error-msg {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #f44336;
+}

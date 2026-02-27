@@ -5,6 +5,7 @@ import { OpenCodeClient, Message, ServerStatus, defaultConfig } from "./lib/open
 import { MarkdownMessage } from "./components/MarkdownMessage";
 import { DiagnosticsPage } from "./components/DiagnosticsPage";
 import { DojoPage } from "./dojo";
+import { BoardroomPage } from "./boardroom";
 
 const client = new OpenCodeClient();
 const POLL_INTERVAL_MS = 15_000;
@@ -24,7 +25,7 @@ function fmtBytes(b: number): string {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'dojo' | 'diagnostics'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'boardroom' | 'dojo' | 'diagnostics'>('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -283,7 +284,7 @@ function App() {
         borderBottom: '1px solid #333',
         padding: '0 0.5rem',
       }}>
-        {(['chat', 'dojo', 'diagnostics'] as const).map(tab => (
+        {(['chat', 'boardroom', 'dojo', 'diagnostics'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -300,7 +301,7 @@ function App() {
               transition: 'color 0.15s',
             }}
           >
-            {tab === 'chat' ? 'Chat' : tab === 'dojo' ? 'Dojo' : 'Diagnostics'}
+            {tab === 'chat' ? 'Chat' : tab === 'boardroom' ? 'Boardroom' : tab === 'dojo' ? 'Dojo' : 'Diagnostics'}
             {tab === 'diagnostics' && serverStatus && !serverStatus.online && (
               <span style={{
                 marginLeft: '0.4rem',
@@ -355,6 +356,10 @@ function App() {
             </button>
           </div>
         </div>
+      )}
+
+      {activeTab === 'boardroom' && (
+        <BoardroomPage models={models} connected={connected} />
       )}
 
       {activeTab === 'dojo' && (
