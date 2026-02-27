@@ -1,0 +1,38 @@
+/**
+ * QuitButton Styles
+ * Reusable shutdown button module
+ */
+
+.quit-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.quit-button:hover {
+  background-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.quit-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(220, 53, 69, 0.3);
+}
+
+.quit-button-large {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.quit-button-small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}

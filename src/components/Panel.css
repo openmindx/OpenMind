@@ -1,0 +1,24 @@
+/**
+ * Custom Panel Styles
+ * Locally designed for Boardroom
+ */
+
+.panel {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.panel-header {
+  padding: 0.75rem 1rem;
+  background: #333;
+  border-bottom: 1px solid #3a3a3a;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.panel-content {
+  padding: 1rem;
+}
