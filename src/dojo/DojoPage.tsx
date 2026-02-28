@@ -17,9 +17,11 @@ import './DojoPage.css';
 interface DojoPageProps {
   models: string[];
   connected: boolean;
+  droppedModel?: string | null;
+  onDropConsumed?: () => void;
 }
 
-export function DojoPage({ models, connected }: DojoPageProps) {
+export function DojoPage({ models, connected, droppedModel, onDropConsumed }: DojoPageProps) {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [judgeModel,     setJudgeModel]     = useState('');
   const [rubric,         setRubric]         = useState<DojoRubric>(DEFAULT_RUBRIC);
@@ -47,6 +49,15 @@ export function DojoPage({ models, connected }: DojoPageProps) {
       setJudgeModel(models[judgeIdx]);
     }
   }, [models]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Accept model dropped from ModelPicker
+  useEffect(() => {
+    if (!droppedModel) return;
+    if (!selectedModels.includes(droppedModel)) {
+      setSelectedModels(prev => [...prev, droppedModel]);
+    }
+    onDropConsumed?.();
+  }, [droppedModel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopAll = useCallback(() => {
     abortsRef.current.forEach(ctrl => ctrl.abort());

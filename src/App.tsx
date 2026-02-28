@@ -4,6 +4,8 @@ import "./App.css";
 import { OpenCodeClient, Message, ServerStatus, defaultConfig } from "./lib/opencode-client";
 import { MarkdownMessage } from "./components/MarkdownMessage";
 import { DiagnosticsPage } from "./components/DiagnosticsPage";
+import { ModelPicker } from "./components/ModelPicker";
+import { FloatingChat } from "./components/FloatingChat";
 import { DojoPage } from "./dojo";
 import { BoardroomPage } from "./boardroom";
 
@@ -26,6 +28,9 @@ function fmtBytes(b: number): string {
 
 function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'boardroom' | 'dojo' | 'diagnostics'>('chat');
+  const [floatingChats, setFloatingChats] = useState<string[]>([]);
+  const [droppedDojoModel, setDroppedDojoModel] = useState<string | null>(null);
+  const [dojoTabDragOver, setDojoTabDragOver] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -213,29 +218,18 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
-          {/* Model selector */}
-          {models.length > 0 && (
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              disabled={loading}
-              style={{
-                padding: '0.4rem 0.6rem',
-                background: '#1a1a1a',
-                color: '#e0e0e0',
-                border: '1px solid #3a3a3a',
-                borderRadius: '4px',
-                fontSize: '0.82rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                maxWidth: '200px'
-              }}
-              title="Select model"
-            >
-              {models.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          )}
+          {/* Model picker accordion */}
+          <ModelPicker
+            models={models}
+            selectedModel={selectedModel}
+            disabled={loading}
+            onSelect={setSelectedModel}
+            onOpenChat={(model) => {
+              if (!floatingChats.includes(model)) {
+                setFloatingChats(prev => [...prev, model]);
+              }
+            }}
+          />
 
           {/* Clear history */}
           {messages.length > 0 && (
@@ -288,17 +282,32 @@ function App() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
+            onDragOver={tab === 'dojo' ? (e) => { e.preventDefault(); setDojoTabDragOver(true); } : undefined}
+            onDragLeave={tab === 'dojo' ? () => setDojoTabDragOver(false) : undefined}
+            onDrop={tab === 'dojo' ? (e) => {
+              e.preventDefault();
+              const model = e.dataTransfer.getData('text/plain');
+              if (model) {
+                setDroppedDojoModel(model);
+                setActiveTab('dojo');
+              }
+              setDojoTabDragOver(false);
+            } : undefined}
             style={{
               padding: '0.5rem 1.1rem',
-              background: 'transparent',
+              background: tab === 'dojo' && dojoTabDragOver ? '#0d2a10' : 'transparent',
               border: 'none',
-              borderBottom: `2px solid ${activeTab === tab ? '#007bff' : 'transparent'}`,
-              color: activeTab === tab ? '#e0e0e0' : '#666',
+              borderBottom: `2px solid ${
+                tab === 'dojo' && dojoTabDragOver
+                  ? '#4caf50'
+                  : activeTab === tab ? '#007bff' : 'transparent'
+              }`,
+              color: tab === 'dojo' && dojoTabDragOver ? '#4caf50' : activeTab === tab ? '#e0e0e0' : '#666',
               cursor: 'pointer',
               fontSize: '0.83rem',
               fontWeight: activeTab === tab ? 600 : 400,
               marginBottom: '-1px',
-              transition: 'color 0.15s',
+              transition: 'color 0.15s, background 0.15s',
             }}
           >
             {tab === 'chat' ? 'Chat' : tab === 'boardroom' ? 'Boardroom' : tab === 'dojo' ? 'Dojo' : 'Diagnostics'}
@@ -363,8 +372,23 @@ function App() {
       )}
 
       {activeTab === 'dojo' && (
-        <DojoPage models={models} connected={connected} />
+        <DojoPage
+          models={models}
+          connected={connected}
+          droppedModel={droppedDojoModel}
+          onDropConsumed={() => setDroppedDojoModel(null)}
+        />
       )}
+
+      {/* Floating chat windows */}
+      {floatingChats.map((model, i) => (
+        <FloatingChat
+          key={model}
+          model={model}
+          index={i}
+          onClose={() => setFloatingChats(prev => prev.filter(m => m !== model))}
+        />
+      ))}
 
       {activeTab === 'diagnostics' && (
         <DiagnosticsPage
