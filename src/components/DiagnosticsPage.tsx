@@ -16,11 +16,19 @@ interface LogEntry {
   kind: 'info' | 'success' | 'error';
 }
 
+interface SystemStats {
+  cpu_percent: number;
+  net_rx_bytes: number;
+  net_tx_bytes: number;
+}
+
 interface DiagnosticsPageProps {
   serverStatus: ServerStatus | null;
   models: string[];
   selectedModel: string;
   onCheckServer: () => void;
+  sysStats: SystemStats | null;
+  onNavigateDiagnostics?: () => void;
 }
 
 const SERVER_URL = defaultConfig.ollamaUrl;
@@ -153,7 +161,13 @@ function EndpointRow({ path, label, result }: {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer }: DiagnosticsPageProps) {
+function fmtBytes(b: number): string {
+  if (b >= 1_048_576) return `${(b / 1_048_576).toFixed(1)} MB/s`;
+  if (b >= 1024) return `${(b / 1024).toFixed(0)} KB/s`;
+  return `${b} B/s`;
+}
+
+export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer, sysStats }: DiagnosticsPageProps) {
   const [endpointResults, setEndpointResults] = useState<Record<string, EndpointResult>>({});
   const [endpointTesting, setEndpointTesting] = useState(false);
   const [chatTestResult, setChatTestResult] = useState<{ ok: boolean; latencyMs: number | null; detail: string } | null>(null);
@@ -351,6 +365,56 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
               {endpointTesting ? 'Testing…' : 'Test All Endpoints'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* ── System Stats ── */}
+      <div style={cardStyle}>
+        <div style={cardHeaderStyle}>System Stats</div>
+        <div style={{ padding: '0.85rem 1rem' }}>
+          {sysStats == null ? (
+            <p style={{ margin: 0, fontSize: '0.82rem', color: '#555' }}>
+              Stats unavailable — Tauri backend may not be running.
+            </p>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '0.85rem',
+            }}>
+              <div>
+                <div style={metricLabelStyle}>CPU Usage</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 600, color: sysStats.cpu_percent > 80 ? '#f44336' : sysStats.cpu_percent > 50 ? '#ff9800' : '#4caf50' }}>
+                  {sysStats.cpu_percent.toFixed(1)}%
+                </div>
+                <div style={{
+                  marginTop: '0.3rem',
+                  height: '4px',
+                  background: '#222',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min(sysStats.cpu_percent, 100)}%`,
+                    background: sysStats.cpu_percent > 80 ? '#f44336' : sysStats.cpu_percent > 50 ? '#ff9800' : '#4caf50',
+                    transition: 'width 0.4s ease',
+                    borderRadius: '2px',
+                  }} />
+                </div>
+              </div>
+              <Metric
+                label="Network ↓ Receive"
+                value={fmtBytes(sysStats.net_rx_bytes / 2)}
+                mono
+              />
+              <Metric
+                label="Network ↑ Transmit"
+                value={fmtBytes(sysStats.net_tx_bytes / 2)}
+                mono
+              />
+            </div>
+          )}
         </div>
       </div>
 

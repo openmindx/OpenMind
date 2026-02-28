@@ -20,12 +20,6 @@ interface SystemStats {
   net_tx_bytes: number;
 }
 
-function fmtBytes(b: number): string {
-  if (b >= 1_048_576) return `${(b / 1_048_576).toFixed(1)}MB/s`;
-  if (b >= 1024) return `${(b / 1024).toFixed(0)}KB/s`;
-  return `${b}B/s`;
-}
-
 function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'boardroom' | 'dojo' | 'diagnostics'>('chat');
   const [floatingChats, setFloatingChats] = useState<string[]>([]);
@@ -189,32 +183,16 @@ function App() {
         alignItems: 'center',
         gap: '0.75rem'
       }}>
-        <div style={{ minWidth: 0, fontSize: '0.8rem', color: '#888', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0 0.4rem' }}>
-          <span style={{ color: connected ? '#4caf50' : serverStatus ? '#f44336' : '#666' }}>
-            {connected ? '●' : serverStatus ? '●' : '●'}
-          </span>
+        {/* Compact connection status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem' }}>
+          <span style={{ color: connected ? '#4caf50' : serverStatus ? '#f44336' : '#555', fontSize: '0.85rem' }}>●</span>
           <span style={{ color: connected ? '#4caf50' : serverStatus ? '#f44336' : '#666' }}>
             {connected ? 'Connected' : serverStatus ? 'Disconnected' : 'Checking…'}
           </span>
-          <span style={{ color: '#444' }}>•</span>
-          <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: '3px', fontSize: '0.78rem', color: '#aaa' }}>
-            10.0.0.155:18080
-          </code>
           {connected && serverStatus?.latencyMs != null && (
-            <><span style={{ color: '#444' }}>•</span><span style={{ color: '#4caf50' }}>{serverStatus.latencyMs}ms</span></>
+            <span style={{ color: '#3a7a3a', fontSize: '0.75rem' }}>{serverStatus.latencyMs}ms</span>
           )}
-          <span style={{ color: '#444' }}>•</span>
-          <span style={{ color: '#7eb8f7' }}>{selectedModel}</span>
-          {sysStats != null && (
-            <>
-              <span style={{ color: '#444' }}>•</span>
-              <span title="CPU usage">CPU {sysStats.cpu_percent.toFixed(0)}%</span>
-              <span style={{ color: '#444' }}>•</span>
-              <span title="Network receive / transmit">
-                ↓{fmtBytes(sysStats.net_rx_bytes / 2)} ↑{fmtBytes(sysStats.net_tx_bytes / 2)}
-              </span>
-            </>
-          )}
+          <span style={{ color: '#3a3a3a', fontSize: '0.78rem' }}>OpenMind</span>
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
@@ -326,44 +304,41 @@ function App() {
         ))}
       </div>
 
-      {/* Diagnostic banner (chat tab only) */}
-      {activeTab === 'chat' && serverStatus && !serverStatus.online && (
+      {/* Slim offline strip — redirects to Diagnostics */}
+      {serverStatus && !serverStatus.online && (
         <div style={{
-          padding: '0.6rem 1rem',
-          background: '#3a1a1a',
-          borderBottom: '1px solid #5a2a2a',
-          fontSize: '0.83rem',
-          color: '#ff8a80',
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '1rem'
+          gap: '0.75rem',
+          padding: '0.35rem 1rem',
+          background: '#2a1515',
+          borderBottom: '1px solid #3a2020',
+          fontSize: '0.78rem',
+          color: '#cc6666',
+          flexShrink: 0,
         }}>
-          <div>
-            <strong>Ollama unreachable</strong>
-            {serverStatus.error && (
-              <span style={{ color: '#aaa', marginLeft: '0.5rem' }}>— {serverStatus.error}</span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#777' }}>
-              Last checked: {serverStatus.checkedAt.toLocaleTimeString()}
-            </span>
-            <button
-              onClick={checkServer}
-              style={{
-                padding: '0.3rem 0.75rem',
-                background: '#5a2a2a',
-                color: '#ff8a80',
-                border: '1px solid #7a3a3a',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '0.8rem'
-              }}
-            >
-              Retry now
-            </button>
-          </div>
+          <span>● Ollama unreachable</span>
+          {serverStatus.error && (
+            <span style={{ color: '#7a4a4a' }}>— {serverStatus.error}</span>
+          )}
+          <span style={{ color: '#5a3a3a', marginLeft: 'auto' }}>
+            {serverStatus.checkedAt.toLocaleTimeString()}
+          </span>
+          <button
+            onClick={() => setActiveTab('diagnostics')}
+            style={{
+              padding: '0.2rem 0.6rem',
+              background: 'transparent',
+              border: '1px solid #4a2a2a',
+              borderRadius: '3px',
+              color: '#cc6666',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Diagnostics →
+          </button>
         </div>
       )}
 
@@ -396,6 +371,7 @@ function App() {
           models={models}
           selectedModel={selectedModel}
           onCheckServer={checkServer}
+          sysStats={sysStats}
         />
       )}
 
