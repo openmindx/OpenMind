@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ModelInfo } from '../lib/opencode-client';
 import './ModelPicker.css';
+
+function fmtSize(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
+  return `${bytes} B`;
+}
 
 interface ModelPickerProps {
   models: string[];
+  modelDetails?: ModelInfo[];
   selectedModel: string;
   disabled?: boolean;
   onSelect: (model: string) => void;
@@ -11,11 +19,13 @@ interface ModelPickerProps {
 
 export function ModelPicker({
   models,
+  modelDetails = [],
   selectedModel,
   disabled = false,
   onSelect,
   onOpenChat,
 }: ModelPickerProps) {
+  const detailMap = new Map(modelDetails.map(d => [d.name, d]));
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -89,9 +99,14 @@ export function ModelPicker({
                   className="model-picker__name"
                   onClick={() => handleSelect(model)}
                 >
-                  {shortName(model)}
+                  <span className="model-picker__name-text">{shortName(model)}</span>
                   {model === selectedModel && (
                     <span className="model-picker__active-dot" aria-label="active" />
+                  )}
+                  {detailMap.get(model) && (
+                    <span className="model-picker__size">
+                      {fmtSize(detailMap.get(model)!.size)}
+                    </span>
                   )}
                 </button>
 

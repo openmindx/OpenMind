@@ -7,7 +7,7 @@ Items are grouped by area. Check off as completed.
 ## Configuration & Settings
 
 - [ ] Settings panel / modal — edit Ollama URL and port without touching source
-- [ ] Persist selected model to `localStorage` so it survives restarts
+- [x] Persist selected model to `localStorage` so it survives restarts
 - [ ] Per-conversation model override (different model per chat session)
 - [ ] Configurable system prompt (global default + per-conversation override)
 - [ ] Configurable temperature, top-p, num_ctx, and other Ollama sampling params
@@ -24,7 +24,7 @@ Items are grouped by area. Check off as completed.
 - [ ] Streaming token counter in header (tokens/s)
 - [ ] Context window usage indicator (current tokens used / model max)
 - [ ] Auto-resize textarea already works; add explicit expand/collapse toggle for long inputs
-- [ ] "Thinking" / reasoning block collapse for models that emit `<think>` tags (e.g. qwen3)
+- [x] "Thinking" / reasoning block collapse — `<think>` tags rendered as collapsible block with preview
 - [ ] File attachment — send text files / images as part of the message (multimodal models)
 - [ ] Drag-and-drop file into chat input area
 
@@ -55,12 +55,12 @@ Items are grouped by area. Check off as completed.
 
 ## Diagnostics & Observability
 
-- [ ] Persist diagnostics log across tab switches (currently resets on re-mount)
+- [x] Persist diagnostics log across tab switches (module-level store survives remount)
 - [ ] Export diagnostics log to file
 - [ ] Latency sparkline / history graph for server probe results
 - [ ] Token throughput chart during streaming
-- [ ] Disk usage display per model (already in `/api/tags` response — `size` field)
-- [ ] GPU memory usage (requires Ollama `/api/ps` `size_vram` field)
+- [x] Disk usage display per model — size shown in ModelPicker and Diagnostics model list
+- [x] GPU memory usage — VRAM badge from `/api/ps` shown in Diagnostics model list
 - [ ] Alert / notification when server goes offline while app is open
 - [ ] `curlllama.sh` output surfaced in the Diagnostics tab (run script via Tauri shell plugin)
 
@@ -104,7 +104,7 @@ Dojo is an evaluation harness where models are scored against each other. Prompt
 - [ ] Export Dojo results as CSV / JSON (prompt, model, response, score, judge reasoning)
 - [ ] Per-round prompt history / replay
 - [ ] Auto-run mode — queue N prompts × M models, run unattended, display aggregate results
-- [ ] Persist scoreboard to `localStorage` across sessions
+- [x] Persist scoreboard to `localStorage` across sessions
 - [ ] Latency + token-rate display per panel
 
 ---
@@ -121,7 +121,7 @@ Replace the current textarea with a composable command-centre input that handles
 - [ ] Voice input button — browser `SpeechRecognition` API with live transcript preview
 - [ ] **Prompt templates** — pre-saved templates selectable from a popover (e.g. "Explain this code", "Review for bugs", "Write tests")
 - [ ] Multi-line expand/collapse toggle (current auto-resize kept; add explicit ↕ handle)
-- [ ] Character / token count display beneath input (rough estimate: chars ÷ 4)
+- [x] Character / token count display beneath input (rough estimate: chars ÷ 4)
 - [ ] Send to all / send to selected toggle when multiple models are active in Boardroom / Dojo
 - [ ] Keyboard shortcut overlay — press `?` in input to show available shortcuts / commands
 - [ ] Input history — `↑` / `↓` arrows cycle through previously sent messages (session-scoped)

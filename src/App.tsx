@@ -2,10 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import { OpenCodeClient, Message, ServerStatus, defaultConfig } from "./lib/opencode-client";
+import type { ModelInfo, RunningModel } from "./lib/opencode-client";
 import { MarkdownMessage } from "./components/MarkdownMessage";
 import { DiagnosticsPage } from "./components/DiagnosticsPage";
 import { ModelPicker } from "./components/ModelPicker";
 import { FloatingChat } from "./components/FloatingChat";
+import { ConnectionStatus } from "./components/ConnectionStatus";
 import { DojoPage } from "./dojo";
 import { BoardroomPage } from "./boardroom";
 
@@ -13,6 +15,7 @@ const client = new OpenCodeClient();
 const POLL_INTERVAL_MS = 15_000;
 const STATS_INTERVAL_MS = 2_000;
 const STORAGE_KEY = 'openmind-messages';
+const MODEL_KEY = 'openmind-model';
 
 interface SystemStats {
   cpu_percent: number;
@@ -30,7 +33,11 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [models, setModels] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState(defaultConfig.model);
+  const [modelDetails, setModelDetails] = useState<ModelInfo[]>([]);
+  const [runningModels, setRunningModels] = useState<RunningModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState(
+    () => localStorage.getItem(MODEL_KEY) ?? defaultConfig.model
+  );
   const [sysStats, setSysStats] = useState<SystemStats | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const historyLoaded = useRef(false);
@@ -53,17 +60,23 @@ function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
   }, [messages]);
 
+  // Persist selected model
+  useEffect(() => {
+    localStorage.setItem(MODEL_KEY, selectedModel);
+  }, [selectedModel]);
+
   const checkServer = useCallback(async () => {
     const status = await client.getServerStatus();
     setServerStatus(status);
     if (status.online) {
       client.getAvailableModels().then(fetched => {
         setModels(fetched);
-        // If saved model is no longer available, fall back to first available
         setSelectedModel(prev =>
           fetched.length > 0 && !fetched.includes(prev) ? fetched[0] : prev
         );
       });
+      client.getModelDetails().then(setModelDetails);
+      client.getRunningModels().then(setRunningModels);
     }
   }, []);
 
@@ -183,22 +196,21 @@ function App() {
         alignItems: 'center',
         gap: '0.75rem'
       }}>
-        {/* Compact connection status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem' }}>
-          <span style={{ color: connected ? '#4caf50' : serverStatus ? '#f44336' : '#555', fontSize: '0.85rem' }}>●</span>
-          <span style={{ color: connected ? '#4caf50' : serverStatus ? '#f44336' : '#666' }}>
-            {connected ? 'Connected' : serverStatus ? 'Disconnected' : 'Checking…'}
-          </span>
-          {connected && serverStatus?.latencyMs != null && (
-            <span style={{ color: '#3a7a3a', fontSize: '0.75rem' }}>{serverStatus.latencyMs}ms</span>
-          )}
-          <span style={{ color: '#3a3a3a', fontSize: '0.78rem' }}>OpenMind</span>
-        </div>
+        <ConnectionStatus
+          online={connected}
+          checking={serverStatus === null}
+          latencyMs={serverStatus?.latencyMs ?? null}
+          error={serverStatus?.error ?? null}
+          checkedAt={serverStatus?.checkedAt ?? null}
+          serverUrl={defaultConfig.ollamaUrl}
+          onNavigate={() => setActiveTab('diagnostics')}
+        />
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
           {/* Model picker accordion */}
           <ModelPicker
             models={models}
+            modelDetails={modelDetails}
             selectedModel={selectedModel}
             disabled={loading}
             onSelect={setSelectedModel}
@@ -372,6 +384,8 @@ function App() {
           selectedModel={selectedModel}
           onCheckServer={checkServer}
           sysStats={sysStats}
+          modelDetails={modelDetails}
+          runningModels={runningModels}
         />
       )}
 
@@ -519,9 +533,14 @@ function App() {
             </button>
           )}
         </div>
-        <div style={{ marginTop: '0.4rem', fontSize: '0.73rem', color: '#555' }}>
-          Enter to send · Shift+Enter for new line · Ctrl+Q to quit
-          {messages.length > 0 && ` · ${messages.length} message${messages.length !== 1 ? 's' : ''} (persisted)`}
+        <div style={{ marginTop: '0.4rem', fontSize: '0.73rem', color: '#555', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Enter to send · Shift+Enter for new line · Ctrl+Q to quit
+          {messages.length > 0 && ` · ${messages.length} msg${messages.length !== 1 ? 's' : ''}`}</span>
+          {input.length > 0 && (
+            <span style={{ color: '#3a3a3a', fontFamily: 'monospace' }}>
+              ~{Math.ceil(input.length / 4)} tokens
+            </span>
+          )}
         </div>
       </div>}
     </div>

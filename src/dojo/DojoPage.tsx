@@ -1,5 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { defaultConfig } from '../lib/opencode-client';
+
+const SCOREBOARD_KEY = 'openmind-dojo-scoreboard';
+
+function loadScoreboard(): ScoreboardEntry[] {
+  try {
+    const raw = localStorage.getItem(SCOREBOARD_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveScoreboard(entries: ScoreboardEntry[]) {
+  try { localStorage.setItem(SCOREBOARD_KEY, JSON.stringify(entries)); } catch { /* ignore */ }
+}
 import {
   DojoRubric,
   ModelResponse,
@@ -34,7 +47,7 @@ export function DojoPage({ models, connected, droppedModel, onDropConsumed }: Do
   const [streaming,  setStreaming]  = useState(false);
 
   const [rounds,     setRounds]     = useState<DojoRound[]>([]);
-  const [scoreboard, setScoreboard] = useState<ScoreboardEntry[]>([]);
+  const [scoreboard, setScoreboard] = useState<ScoreboardEntry[]>(loadScoreboard);
 
   // Refs to avoid stale closures during async streaming
   const abortsRef = useRef<Map<string, AbortController>>(new Map());
@@ -176,7 +189,9 @@ export function DojoPage({ models, connected, droppedModel, onDropConsumed }: Do
             if (score.model === winner.model) entry.wins++;
             map.set(score.model, entry);
           }
-          return Array.from(map.values());
+          const next = Array.from(map.values());
+          saveScoreboard(next);
+          return next;
         });
 
         // Persist round
@@ -207,6 +222,7 @@ export function DojoPage({ models, connected, droppedModel, onDropConsumed }: Do
     setJudgeError(null);
     setRounds([]);
     setScoreboard([]);
+    saveScoreboard([]);
   }
 
   const activeModels = Object.keys(responses);

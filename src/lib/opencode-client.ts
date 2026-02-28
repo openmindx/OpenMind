@@ -21,6 +21,21 @@ export interface ServerStatus {
   checkedAt: Date;
 }
 
+export interface ModelInfo {
+  name: string;
+  size: number;           // bytes on disk
+  parameterSize: string;  // e.g. "30.5B"
+  quantization: string;   // e.g. "Q4_K_M"
+  family: string;         // e.g. "qwen3"
+  modifiedAt: string;
+}
+
+export interface RunningModel {
+  name: string;
+  sizeVram: number;       // bytes in VRAM
+  expiresAt: string;
+}
+
 export const defaultConfig: OpenCodeConfig = {
   serverUrl: 'http://localhost:8080',
   ollamaUrl: 'http://10.0.0.155:18080',
@@ -115,6 +130,43 @@ export class OpenCodeClient {
       if (!response.ok) return [];
       const data = await response.json();
       return data.models?.map((m: any) => m.name) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getModelDetails(): Promise<ModelInfo[]> {
+    try {
+      const response = await fetch(`${this.config.ollamaUrl}/api/tags`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.models ?? []).map((m: any) => ({
+        name: m.name ?? '',
+        size: m.size ?? 0,
+        parameterSize: m.details?.parameter_size ?? '',
+        quantization: m.details?.quantization_level ?? '',
+        family: m.details?.family ?? '',
+        modifiedAt: m.modified_at ?? '',
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  async getRunningModels(): Promise<RunningModel[]> {
+    try {
+      const response = await fetch(`${this.config.ollamaUrl}/api/ps`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.models ?? []).map((m: any) => ({
+        name: m.name ?? '',
+        sizeVram: m.size_vram ?? 0,
+        expiresAt: m.expires_at ?? '',
+      }));
     } catch {
       return [];
     }

@@ -11,3 +11,4 @@ export { MarkdownMessage } from './MarkdownMessage';
 export { DiagnosticsPage } from './DiagnosticsPage';
 export { ModelPicker } from './ModelPicker';
 export { FloatingChat } from './FloatingChat';
+export { ConnectionStatus } from './ConnectionStatus';

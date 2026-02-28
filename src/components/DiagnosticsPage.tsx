@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ServerStatus, defaultConfig } from '../lib/opencode-client';
+import type { ModelInfo, RunningModel } from '../lib/opencode-client';
 
 interface EndpointResult {
   url: string;
@@ -28,8 +29,13 @@ interface DiagnosticsPageProps {
   selectedModel: string;
   onCheckServer: () => void;
   sysStats: SystemStats | null;
-  onNavigateDiagnostics?: () => void;
+  modelDetails?: ModelInfo[];
+  runningModels?: RunningModel[];
 }
+
+// ─── Persist log across tab switches ────────────────────────────────────────
+// Module-level so it survives component unmount/remount
+let _persistedLog: LogEntry[] = [];
 
 const SERVER_URL = defaultConfig.ollamaUrl;
 
@@ -167,19 +173,29 @@ function fmtBytes(b: number): string {
   return `${b} B/s`;
 }
 
-export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer, sysStats }: DiagnosticsPageProps) {
+function fmtSize(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
+  return `${bytes} B`;
+}
+
+export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer, sysStats, modelDetails = [], runningModels = [] }: DiagnosticsPageProps) {
   const [endpointResults, setEndpointResults] = useState<Record<string, EndpointResult>>({});
   const [endpointTesting, setEndpointTesting] = useState(false);
   const [chatTestResult, setChatTestResult] = useState<{ ok: boolean; latencyMs: number | null; detail: string } | null>(null);
   const [chatTesting, setChatTesting] = useState(false);
-  const [log, setLog] = useState<LogEntry[]>([]);
+  const [log, setLog] = useState<LogEntry[]>(_persistedLog);
   const [ollamaVersion, setOllamaVersion] = useState<string | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+  const detailMap = new Map(modelDetails.map(d => [d.name, d]));
+  const runningMap = new Map(runningModels.map(r => [r.name, r]));
 
   const connected = serverStatus?.online ?? false;
 
   function addLog(message: string, kind: LogEntry['kind'] = 'info') {
-    setLog(prev => [...prev.slice(-99), { time: new Date(), message, kind }]);
+    const entry = { time: new Date(), message, kind };
+    _persistedLog = [..._persistedLog.slice(-99), entry];
+    setLog(_persistedLog);
   }
 
   // Auto-scroll log
@@ -453,21 +469,37 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               {models.map(m => {
                 const active = m === selectedModel;
+                const detail = detailMap.get(m);
+                const running = runningMap.get(m);
                 return (
                   <div key={m} style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.4rem 0.65rem',
-                    background: active ? '#1a2e4a' : '#181818',
-                    border: `1px solid ${active ? '#2a5080' : '#242424'}`,
+                    background: active ? '#1a2e4a' : running ? '#0d1a0d' : '#181818',
+                    border: `1px solid ${active ? '#2a5080' : running ? '#1a3a1a' : '#242424'}`,
                     borderRadius: '4px',
                     fontSize: '0.83rem',
                   }}>
-                    <span style={{ color: active ? '#4fa3e0' : '#444' }}>
-                      {active ? '▶' : '○'}
+                    <span style={{ color: active ? '#4fa3e0' : running ? '#4caf50' : '#444' }}>
+                      {active ? '▶' : running ? '●' : '○'}
                     </span>
-                    <code style={{ color: active ? '#7eb8f7' : '#999', flex: 1 }}>{m}</code>
-                    {active && (
-                      <span style={{ fontSize: '0.72rem', color: '#4caf50' }}>active</span>
+                    <code style={{ color: active ? '#7eb8f7' : '#999', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m}</code>
+                    {detail?.parameterSize && (
+                      <span style={{ fontSize: '0.7rem', color: '#555', fontFamily: 'monospace', flexShrink: 0 }}>{detail.parameterSize}</span>
+                    )}
+                    {detail?.quantization && (
+                      <span style={{ fontSize: '0.68rem', color: '#444', fontFamily: 'monospace', flexShrink: 0 }}>{detail.quantization}</span>
+                    )}
+                    {detail?.size ? (
+                      <span style={{ fontSize: '0.7rem', color: '#3a3a3a', fontFamily: 'monospace', flexShrink: 0 }}>{fmtSize(detail.size)}</span>
+                    ) : null}
+                    {running && (
+                      <span style={{ fontSize: '0.68rem', color: '#4caf50', background: '#0d1a0d', border: '1px solid #1a3a1a', borderRadius: '3px', padding: '1px 5px', flexShrink: 0 }}>
+                        VRAM {fmtSize(running.sizeVram)}
+                      </span>
+                    )}
+                    {active && !running && (
+                      <span style={{ fontSize: '0.72rem', color: '#4caf50', flexShrink: 0 }}>active</span>
                     )}
                   </div>
                 );
@@ -533,7 +565,7 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
           <span>Connection Log</span>
           {log.length > 0 && (
             <button
-              onClick={() => setLog([])}
+              onClick={() => { _persistedLog = []; setLog([]); }}
               style={{ ...btnBase, padding: '0.15rem 0.5rem', fontSize: '0.72rem', background: '#2a2a2a', color: '#666', border: '1px solid #333' }}
             >
               Clear

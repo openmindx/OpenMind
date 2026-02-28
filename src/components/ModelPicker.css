@@ -164,6 +164,24 @@
   color: #7eb8f7;
 }
 
+.model-picker__name-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-picker__size {
+  font-size: 0.65rem;
+  color: #3a3a3a;
+  font-family: monospace;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.model-picker__row--active .model-picker__size {
+  color: #2a5a5a;
+}
+
 /* Active indicator dot */
 .model-picker__active-dot {
   display: inline-block;
