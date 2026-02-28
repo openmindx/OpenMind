@@ -68,37 +68,44 @@ Items are grouped by area. Check off as completed.
 
 ## Boardroom Mode — Multi-Agent Consensus
 
-Boardroom brings multiple models into a single structured session where each model responds independently to the same prompt, then a synthesis step derives a consensus answer. Modelled on the original `boardroom` FlexLayout UI.
+Boardroom brings multiple models into a single structured session where each model responds independently to the same prompt, then a synthesis step derives a consensus answer. See [BOARDROOM.md](./BOARDROOM.md).
 
-- [ ] **Boardroom session type** — distinct from single-model Chat; selectable from a mode switcher in the header
-- [ ] Send one prompt to N selected models simultaneously; all streams run in parallel
-- [ ] Each model gets its own panel (flexlayout-react tab/split) showing its live stream
-- [ ] **Consensus engine** — after all models finish, a designated "judge" model receives all responses and produces a synthesized verdict (configurable prompt template)
-- [ ] Consensus panel: dedicated pane displaying the final synthesized answer with per-model attribution
-- [ ] Vote display — optional simple majority-text summary showing which models agreed / diverged
-- [ ] **Agent roles** — assign roles per model (e.g. `critic`, `advocate`, `synthesizer`) injected as system prompts
-- [ ] Boardroom history — persist multi-model sessions with all individual responses and consensus output
-- [ ] Export Boardroom session as structured JSON (prompt + per-model response + consensus)
-- [ ] Configurable quorum — only synthesize after all N models respond, or after a timeout with available responses
-- [ ] Re-run consensus with a different judge model without re-querying the panel models
+- [x] **Boardroom tab** — distinct from single-model Chat; tab in the header nav
+- [x] Send one prompt to N selected models simultaneously; all streams run in parallel
+- [x] Each advisor gets its own panel showing its live stream
+- [x] **Consensus engine** — after all advisors finish, a synthesizer model receives all responses and produces a structured verdict
+- [x] Consensus panel — displays synthesized output with streaming cursor; Re-synthesize button
+- [x] **Agent roles** — advocate, critic, analyst, devil's advocate, expert, generalist injected as system prompts
+- [x] Re-run consensus with a different synthesizer without re-querying advisors (↻ Re-synthesize)
+- [x] Preset boards — Classic Triad, Devil's Court, Full Board, Peer Review
+- [x] Stop all — aborts every advisor stream and the synthesizer simultaneously
+- [ ] Vote display — optional summary showing which advisors agreed / diverged
+- [ ] Boardroom session history — persist multi-model sessions across app restarts
+- [ ] Export Boardroom session as structured JSON (prompt + per-advisor response + consensus)
+- [ ] Configurable quorum — synthesize after N of M advisors respond (timeout-based)
+- [ ] Per-advisor custom system prompt override in BoardroomInput
 
 ---
 
 ## Dojo Mode — Model Evaluation & Sparring
 
-Dojo is an evaluation harness where models are scored against each other. Prompted with the same input, their outputs are judged on configurable criteria.
+Dojo is an evaluation harness where models are scored against each other. Prompted with the same input, their outputs are judged on configurable criteria. See [DOJO.md](./DOJO.md).
 
-- [ ] **Dojo session type** — structured benchmark / head-to-head mode
-- [ ] Side-by-side two-model layout (A vs B) with a vertical divider — draggable to resize
-- [ ] N-way tournament bracket: queue multiple models, run round-robin comparisons
-- [ ] **Judge step** — configurable judge model scores each response on: accuracy, conciseness, reasoning quality, code correctness (user-selectable rubric)
-- [ ] Per-response score display with judge explanation (rendered in a collapsible card below each response)
-- [ ] Running scoreboard panel — cumulative win/loss/draw across Dojo rounds in the session
-- [ ] **Prompt library** — save and reuse standard test prompts (coding challenge, logic puzzle, factual recall, etc.)
-- [ ] Blind mode — hide model names from judge prompt to reduce bias
+- [x] **Dojo tab** — structured benchmark / head-to-head mode accessible from header nav
+- [x] N-model fan-out layout — auto-fit grid of panels, each streaming simultaneously
+- [x] **Judge step** — configurable judge model scores each response on accuracy, conciseness, reasoning, code correctness (user-selectable rubric)
+- [x] Per-response score bars with judge justification rendered in each ModelPanel
+- [x] Running scoreboard — cumulative wins and average overall score across Dojo rounds
+- [x] **Prompt presets** — 5 built-in test prompts (code challenge, logic puzzle, concept explanation, debug challenge, debate)
+- [x] Blind mode — hide model names from judge prompt to reduce bias; label mapping restored after parse
+- [x] Stop All — aborts every contestant stream simultaneously
+- [x] Configurable rubric — enable/disable accuracy, conciseness, reasoning, code correctness
+- [ ] N-way tournament bracket: round-robin comparisons with bracket view
 - [ ] Export Dojo results as CSV / JSON (prompt, model, response, score, judge reasoning)
-- [ ] Replay mode — replay any Dojo round's prompts against a newly pulled model
+- [ ] Per-round prompt history / replay
 - [ ] Auto-run mode — queue N prompts × M models, run unattended, display aggregate results
+- [ ] Persist scoreboard to `localStorage` across sessions
+- [ ] Latency + token-rate display per panel
 
 ---
 

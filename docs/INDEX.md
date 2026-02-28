@@ -2,13 +2,14 @@
 
 **Project:** OpenMind — AI Interface powered by Ollama & Tauri
 **Tech Stack:** Tauri 2 · React 19 · TypeScript · Rust
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-02-27 — Boardroom module added
 
 ---
 
 ## Quick Navigation
 
 - [Technical Reference](./TECHNICAL.md) — Stack, architecture, all config values, API details
+- [Boardroom](./BOARDROOM.md) — Multi-agent consensus mode: roles, synthesis, preset boards
 - [Dojo](./DOJO.md) — Multi-model evaluation mode: architecture, types, judge prompt, scoreboard
 - [Roadmap](./ROADMAP.md) — Planned features and todo checklist
 - [Usage Guide](./USAGE.md) — How to use the chat interface
@@ -49,6 +50,7 @@ Key components:
 | Document | Description |
 |----------|-------------|
 | [Technical Reference](./TECHNICAL.md) | Stack, directory layout, state, Rust commands, all config values |
+| [Boardroom](./BOARDROOM.md) | Multi-agent consensus mode — roles, client functions, synthesis prompt, preset boards |
 | [Dojo](./DOJO.md) | Multi-model evaluation mode — architecture, types, judge prompt, scoreboard logic |
 | [Roadmap](./ROADMAP.md) | Planned features as a checkbox todo list |
 | [OpenCode Manual](./OPENCODE_MANUAL.md) | OpenCode agent architecture, config, MCP integration |
@@ -65,6 +67,12 @@ OpenMind Desktop (Tauri 2)
 ├── Frontend (React 19 / TypeScript)
 │   ├── App.tsx                  — chat UI, model selector, streaming, system stats
 │   ├── lib/opencode-client.ts   — Ollama HTTP client + diagnostics
+│   ├── boardroom/               — Boardroom multi-agent consensus module
+│   │   ├── BoardroomPage.tsx    — orchestrator: fan-out, synthesize, abort
+│   │   ├── boardroom-client.ts  — streamAgentResponse(), streamConsensus()
+│   │   ├── boardroom-types.ts   — roles, configs, preset boards, presets
+│   │   ├── index.ts             — barrel export
+│   │   └── components/          — AgentPanel, ConsensusPanel, BoardroomInput
 │   ├── dojo/                    — Dojo multi-model evaluation module
 │   │   ├── DojoPage.tsx         — orchestrator: fan-out, judge, scoreboard
 │   │   ├── dojo-client.ts       — streamModelResponse(), runJudge()
@@ -166,13 +174,14 @@ Base URL: `http://localhost:8080`
 - **Multiline textarea** input with auto-resize; Shift+Enter for newline, Enter to send
 - **Stop streaming** button — aborts in-progress generation mid-stream
 - **Dojo** — multi-model fan-out evaluation with judge scoring, blind mode, session scoreboard (see [DOJO.md](./DOJO.md))
+- **Boardroom** — multi-agent consensus: role-injected advisors (advocate, critic, analyst, devil's advocate, expert, generalist) fan out in parallel; synthesizer produces structured consensus (see [BOARDROOM.md](./BOARDROOM.md))
 
 ### Planned
 
 See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 
-- **Boardroom mode** — send one prompt to N models in parallel, stream each into its own panel, synthesize a consensus answer via a judge model
-- **Dojo mode** — tournament brackets, per-round replay, unattended auto-run, CSV/JSON export (core Dojo is live — see [DOJO.md](./DOJO.md) for planned enhancements)
+- **Boardroom enhancements** — session history persistence, JSON export, configurable quorum, vote display (core Boardroom is live — see [BOARDROOM.md](./BOARDROOM.md) for planned enhancements)
+- **Dojo enhancements** — tournament brackets, per-round replay, unattended auto-run, CSV/JSON export (core Dojo is live — see [DOJO.md](./DOJO.md) for planned enhancements)
 - **Ultimate input field** — slash commands, `@model` targeting, file drop, voice input, prompt templates, token counter, per-session history
 - **flexlayout-react multi-panel UI** — drag, drop, and resize Chat / Boardroom / Dojo / Diagnostics panels; layout presets; layout persistence; panel maximise/restore
 - Multiple named conversation sessions with sidebar
@@ -196,4 +205,4 @@ See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 
 ---
 
-*Last updated: 2026-02-27 — Dojo module added*
+*Last updated: 2026-02-27 — Boardroom module added*
