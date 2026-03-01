@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { ServerStatus, defaultConfig } from '../lib/opencode-client';
 import type { ModelInfo, RunningModel } from '../lib/opencode-client';
 
@@ -177,6 +178,163 @@ function fmtSize(bytes: number): string {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
   return `${bytes} B`;
+}
+
+// ─── ANSI escape-code stripper ───────────────────────────────────────────────
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\x1b\[[0-9;]*[mGKHF]/g;
+function stripAnsi(s: string) { return s.replace(ANSI_RE, ''); }
+
+// ─── Shell scripts available to run ─────────────────────────────────────────
+interface ScriptDef {
+  id: string;
+  label: string;
+  desc: string;
+}
+
+const SCRIPTS: ScriptDef[] = [
+  { id: 'test-opencode-ollama.sh',  label: 'Integration Test',  desc: 'OpenCode + Ollama end-to-end check' },
+  { id: 'curlllama.sh',             label: 'LAN Discovery',     desc: 'Ollama LAN scan + curl command map' },
+  { id: 'sync-ollama-models.sh',    label: 'Sync Models',       desc: 'Write available models to OpenCode config' },
+];
+
+interface ScriptResult {
+  output: string;
+  error: string | null;
+  durationMs: number;
+  ranAt: Date;
+}
+
+function ShellScriptsCard({ addLog }: { addLog: (msg: string, kind: LogEntry['kind']) => void }) {
+  const [running, setRunning] = useState<string | null>(null);
+  const [results, setResults] = useState<Record<string, ScriptResult>>({});
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  async function runScript(script: ScriptDef) {
+    if (running) return;
+    setRunning(script.id);
+    addLog(`Running ${script.label}…`, 'info');
+    const start = performance.now();
+    try {
+      const raw = await invoke<string>('run_diagnostic_script', { script: script.id });
+      const durationMs = Math.round(performance.now() - start);
+      const output = stripAnsi(raw);
+      setResults(prev => ({ ...prev, [script.id]: { output, error: null, durationMs, ranAt: new Date() } }));
+      addLog(`${script.label} → done in ${durationMs}ms`, 'success');
+      setExpanded(script.id);
+    } catch (err: any) {
+      const durationMs = Math.round(performance.now() - start);
+      const errMsg = err?.message ?? String(err);
+      setResults(prev => ({ ...prev, [script.id]: { output: '', error: errMsg, durationMs, ranAt: new Date() } }));
+      addLog(`${script.label} → ${errMsg}`, 'error');
+      setExpanded(script.id);
+    }
+    setRunning(null);
+  }
+
+  return (
+    <div style={cardStyle}>
+      <div style={cardHeaderStyle}>Diagnostic Scripts</div>
+      <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {SCRIPTS.map(script => {
+          const result = results[script.id];
+          const isRunning = running === script.id;
+          const isExpanded = expanded === script.id;
+
+          return (
+            <div key={script.id} style={{ border: '1px solid #2a2a2a', borderRadius: '4px', overflow: 'hidden' }}>
+              {/* Script header row */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                padding: '0.5rem 0.75rem',
+                background: '#1a1a1a',
+              }}>
+                <span style={{
+                  width: '0.5rem',
+                  height: '0.5rem',
+                  borderRadius: '50%',
+                  background: result
+                    ? (result.error ? '#f44336' : '#4caf50')
+                    : '#3a3a3a',
+                  flexShrink: 0,
+                }} />
+                <code style={{ color: '#7eb8f7', fontSize: '0.8rem', flex: 1 }}>{script.id}</code>
+                <span style={{ color: '#555', fontSize: '0.75rem' }}>{script.desc}</span>
+                {result && (
+                  <span style={{ color: '#444', fontSize: '0.73rem', fontFamily: 'monospace', flexShrink: 0 }}>
+                    {result.durationMs}ms
+                  </span>
+                )}
+                <button
+                  onClick={() => runScript(script)}
+                  disabled={!!running}
+                  style={{
+                    padding: '0.2rem 0.65rem',
+                    background: isRunning ? '#1a2a1a' : '#1a2a3a',
+                    color: isRunning ? '#4caf50' : '#7eb8f7',
+                    border: `1px solid ${isRunning ? '#2a4a2a' : '#2a4a6a'}`,
+                    borderRadius: '3px',
+                    cursor: running ? 'not-allowed' : 'pointer',
+                    fontSize: '0.75rem',
+                    flexShrink: 0,
+                    opacity: running && !isRunning ? 0.4 : 1,
+                  }}
+                >
+                  {isRunning ? '⏳ Running…' : 'Run'}
+                </button>
+                {result && (
+                  <button
+                    onClick={() => setExpanded(isExpanded ? null : script.id)}
+                    style={{
+                      padding: '0.2rem 0.5rem',
+                      background: 'transparent',
+                      color: '#555',
+                      border: '1px solid #333',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      fontSize: '0.72rem',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {isExpanded ? '▲' : '▼'}
+                  </button>
+                )}
+              </div>
+
+              {/* Output panel */}
+              {isExpanded && result && (
+                <div style={{
+                  padding: '0.6rem 0.75rem',
+                  background: '#0e0e0e',
+                  borderTop: '1px solid #222',
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  color: result.error ? '#ff8a80' : '#88cc88',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  maxHeight: '18rem',
+                  overflowY: 'auto',
+                  lineHeight: 1.55,
+                }}>
+                  <div style={{ color: '#444', marginBottom: '0.4rem', fontSize: '0.68rem' }}>
+                    {script.label} · {result.ranAt.toLocaleTimeString()} · {result.durationMs}ms
+                  </div>
+                  {result.error
+                    ? <span style={{ color: '#f44336' }}>{result.error}</span>
+                    : (result.output || '(empty output)')}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div style={{ fontSize: '0.72rem', color: '#444', marginTop: '0.1rem' }}>
+          Scripts run from <code style={{ color: '#555' }}>diagnostics/</code> with bash. Output is captured and displayed here.
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer, sysStats, modelDetails = [], runningModels = [] }: DiagnosticsPageProps) {
@@ -558,6 +716,9 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
           )}
         </div>
       </div>
+
+      {/* ── Shell Scripts ── */}
+      <ShellScriptsCard addLog={addLog} />
 
       {/* ── Connection Log ── */}
       <div style={cardStyle}>

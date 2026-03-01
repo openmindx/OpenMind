@@ -8,6 +8,8 @@ import { DiagnosticsPage } from "./components/DiagnosticsPage";
 import { ModelPicker } from "./components/ModelPicker";
 import { FloatingChat } from "./components/FloatingChat";
 import { ConnectionStatus } from "./components/ConnectionStatus";
+import { NavBar } from "./components/NavBar";
+import type { AppTab } from "./components/NavBar";
 import { DojoPage } from "./dojo";
 import { BoardroomPage } from "./boardroom";
 
@@ -24,7 +26,7 @@ interface SystemStats {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'boardroom' | 'dojo' | 'diagnostics'>('chat');
+  const [activeTab, setActiveTab] = useState<AppTab>('chat');
   const [floatingChats, setFloatingChats] = useState<string[]>([]);
   const [droppedDojoModel, setDroppedDojoModel] = useState<string | null>(null);
   const [dojoTabDragOver, setDojoTabDragOver] = useState(false);
@@ -262,59 +264,20 @@ function App() {
       </div>
 
       {/* Tab nav */}
-      <div style={{
-        display: 'flex',
-        background: '#1e1e1e',
-        borderBottom: '1px solid #333',
-        padding: '0 0.5rem',
-      }}>
-        {(['chat', 'boardroom', 'dojo', 'diagnostics'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            onDragOver={tab === 'dojo' ? (e) => { e.preventDefault(); setDojoTabDragOver(true); } : undefined}
-            onDragLeave={tab === 'dojo' ? () => setDojoTabDragOver(false) : undefined}
-            onDrop={tab === 'dojo' ? (e) => {
-              e.preventDefault();
-              const model = e.dataTransfer.getData('text/plain');
-              if (model) {
-                setDroppedDojoModel(model);
-                setActiveTab('dojo');
-              }
-              setDojoTabDragOver(false);
-            } : undefined}
-            style={{
-              padding: '0.5rem 1.1rem',
-              background: tab === 'dojo' && dojoTabDragOver ? '#0d2a10' : 'transparent',
-              border: 'none',
-              borderBottom: `2px solid ${
-                tab === 'dojo' && dojoTabDragOver
-                  ? '#4caf50'
-                  : activeTab === tab ? '#007bff' : 'transparent'
-              }`,
-              color: tab === 'dojo' && dojoTabDragOver ? '#4caf50' : activeTab === tab ? '#e0e0e0' : '#666',
-              cursor: 'pointer',
-              fontSize: '0.83rem',
-              fontWeight: activeTab === tab ? 600 : 400,
-              marginBottom: '-1px',
-              transition: 'color 0.15s, background 0.15s',
-            }}
-          >
-            {tab === 'chat' ? 'Chat' : tab === 'boardroom' ? 'Boardroom' : tab === 'dojo' ? 'Dojo' : 'Diagnostics'}
-            {tab === 'diagnostics' && serverStatus && !serverStatus.online && (
-              <span style={{
-                marginLeft: '0.4rem',
-                background: '#f44336',
-                color: 'white',
-                borderRadius: '10px',
-                fontSize: '0.65rem',
-                padding: '0 0.35rem',
-                verticalAlign: 'middle',
-              }}>!</span>
-            )}
-          </button>
-        ))}
-      </div>
+      <NavBar
+        active={activeTab}
+        onChange={setActiveTab}
+        offlineBadge={!!(serverStatus && !serverStatus.online)}
+        dojoDragOver={dojoTabDragOver}
+        onDojoDragOver={(e) => { e.preventDefault(); setDojoTabDragOver(true); }}
+        onDojoDragLeave={() => setDojoTabDragOver(false)}
+        onDojoDrop={(e) => {
+          e.preventDefault();
+          const model = e.dataTransfer.getData('text/plain');
+          if (model) { setDroppedDojoModel(model); setActiveTab('dojo'); }
+          setDojoTabDragOver(false);
+        }}
+      />
 
       {/* Slim offline strip — redirects to Diagnostics */}
       {serverStatus && !serverStatus.online && (

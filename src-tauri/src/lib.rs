@@ -38,6 +38,50 @@ fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
     }
 }
 
+/// Run one of the bundled diagnostics shell scripts and return stdout+stderr.
+/// Only the three known scripts are allowed to prevent arbitrary execution.
+#[tauri::command]
+async fn run_diagnostic_script(script: String) -> Result<String, String> {
+    const ALLOWED: &[&str] = &[
+        "test-opencode-ollama.sh",
+        "curlllama.sh",
+        "sync-ollama-models.sh",
+    ];
+    if !ALLOWED.contains(&script.as_str()) {
+        return Err(format!("Script '{}' is not in the allowed list", script));
+    }
+
+    // CARGO_MANIFEST_DIR is src-tauri/; parent is the project root.
+    let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let script_path = project_root.join("diagnostics").join(&script);
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let output = std::process::Command::new("bash")
+            .arg(&script_path)
+            .current_dir(&project_root)
+            .output()
+            .map_err(|e| format!("Failed to launch script: {}", e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+        let mut result = stdout;
+        if !stderr.is_empty() {
+            if !result.is_empty() {
+                result.push('\n');
+            }
+            result.push_str("--- stderr ---\n");
+            result.push_str(&stderr);
+        }
+        Ok(result)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 async fn shutdown_app(app: tauri::AppHandle) {
     println!("Shutting down OpenMind...");
@@ -59,7 +103,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(state)
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, shutdown_app, get_system_stats])
+        .invoke_handler(tauri::generate_handler![greet, shutdown_app, get_system_stats, run_diagnostic_script])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

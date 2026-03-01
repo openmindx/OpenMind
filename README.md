@@ -1,277 +1,225 @@
 # OpenMind
 
-**AI Chat Interface — Ollama · Tauri · React**
+> **A native desktop AI workspace — multi-model chat, boardroom consensus, head-to-head evaluation, and live diagnostics — all running locally on your hardware.**
 
-A native desktop application that connects a React chat interface directly to locally-hosted large language models via Ollama. No cloud dependency.
+[![Tauri](https://img.shields.io/badge/Tauri_2-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
+[![React](https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript_5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Rust](https://img.shields.io/badge/Rust-CE422B?logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![Ollama](https://img.shields.io/badge/Ollama-black?logo=ollama&logoColor=white)](https://ollama.com)
 
 ---
 
 ## What is OpenMind?
 
-OpenMind combines locally-hosted AI models with a fast native chat interface to help you:
+OpenMind is a **Tauri 2 desktop application** that gives you a rich, performant AI interface for locally-hosted models served by [Ollama](https://ollama.com). No cloud dependency, no API keys, no data leaving your machine.
 
-- **Write Code**: Generate code from natural language descriptions
-- **Debug Issues**: Get intelligent help with errors and bugs
-- **Learn**: Understand complex programming concepts
-- **Refactor**: Improve and modernize existing code
-- **Review**: Get feedback on code quality and best practices
-
-### Key Features
-
-- ✅ **Local AI Models**: Runs on your network via Ollama - no cloud dependency
-- ✅ **Multiple Models**: Switch between 30B+ parameter models optimized for coding
-- ✅ **OpenCode Integration**: Powered by OpenCode agent for intelligent assistance
-- ✅ **Real-time Streaming**: See AI responses as they're generated
-- ✅ **Code Execution**: Safe sandbox environment for running code
-- ✅ **File Operations**: Work with your project files directly
-- ✅ **Native Desktop**: Fast, secure Tauri application
+It goes beyond a simple chat window: multiple models can deliberate together in **Boardroom mode**, compete head-to-head in **Dojo mode**, and a live **Diagnostics dashboard** surfaces server health, system telemetry, model inventory, and shell-script integration — all in one native window.
 
 ---
 
-## 📚 Documentation
+## Feature Highlights
 
-**[→ Complete Documentation Index](./docs/INDEX.md)**
+### Chat
+- Streaming token-by-token output with a live cursor
+- Full conversation history persisted to `localStorage`
+- `<think>` reasoning blocks rendered as collapsible sections with preview text
+- Auto-resizing textarea with character ÷ 4 token estimate
+- Stop mid-stream without losing partial output
 
-### Quick Links
+### Model Picker
+- Accordion dropdown showing all available Ollama models
+- Per-model disk size chip pulled from `/api/tags`
+- Drag a model row directly onto the **Dojo** tab to add it as a contestant
+- One-click floating chat window per model — compare responses side-by-side
 
-- **[Project Summary](./docs/PROJECT_SUMMARY.md)** - What's built and what's next
-- **[Usage Guide](./docs/USAGE.md)** - How to use OpenMind
-- **[Setup Guide](./docs/SETUP_COMPLETE.md)** - Installation and configuration
-- **[OpenCode Manual](./docs/OPENCODE_MANUAL.md)** - Integration guide
-- **[AI Components](./docs/AI_COMPONENTS_CATALOG.md)** - UI components catalog
-- **[Sync Script](./docs/SYNC_SCRIPT_README.md)** - Model synchronization tool
+### Boardroom — Multi-Agent Consensus
+Six injected agent roles (advocate, critic, analyst, devil's advocate, expert, generalist) deliberate on the same prompt simultaneously, then a configurable synthesizer model produces a structured consensus report.
+
+- 4 preset boards: Classic Triad, Devil's Court, Full Board, Peer Review
+- 5 built-in debate / analysis prompt presets
+- All advisor streams run in parallel — no waiting for turn-taking
+- Re-synthesize with a different model without re-querying advisors
+- Stop All aborts every stream simultaneously
+
+### Dojo — Head-to-Head Evaluation
+An evaluation harness where N models compete on the same prompt, judged by a configurable model on user-selected rubric criteria.
+
+- Rubric: accuracy, conciseness, reasoning, code correctness (toggle per criterion)
+- Blind mode hides model names from the judge to eliminate name bias
+- Running scoreboard with cumulative wins + average score, persisted across sessions
+- 5 built-in test prompts (code challenge, logic puzzle, concept explanation, debug challenge, debate)
+- Auto-fit grid layout — panels resize as models are added / removed
+
+### Diagnostics
+- Live CPU usage bar with colour-coded thresholds (green → amber → red)
+- Network receive / transmit rates from the Rust `sysinfo` backend
+- Endpoint tester: probe `/api/tags`, `/api/version`, `/v1/models` with raw response viewer
+- Chat inference test: non-streaming end-to-end roundtrip with latency
+- Running models list with VRAM usage from `/api/ps`
+- **Shell Scripts card** — run `test-opencode-ollama.sh`, `curlllama.sh`, `sync-ollama-models.sh` from the UI, output displayed in a terminal-style panel with ANSI stripping
+- Persistent connection log that survives tab switches
+
+### Connection Status
+- Pulsing pill in the header: green ring (online), spinning ring (checking), solid red (offline)
+- Latency badge updated every 15 s
+- Click to jump to Diagnostics
 
 ---
 
-## 🚀 Quick Start
+## Architecture
+
+```
+openmind/
+├── src/                        # React 19 / TypeScript frontend
+│   ├── App.tsx                 # Root — state, polling, layout
+│   ├── components/
+│   │   ├── NavBar.tsx/.css     # Styled tab navigation (glyph + label + desc)
+│   │   ├── ConnectionStatus.tsx/.css
+│   │   ├── DiagnosticsPage.tsx # Full diagnostics dashboard
+│   │   ├── ModelPicker.tsx/.css
+│   │   ├── FloatingChat.tsx/.css
+│   │   ├── MarkdownMessage.tsx # react-markdown + think-block parser
+│   │   └── …
+│   ├── boardroom/
+│   │   ├── BoardroomPage.tsx   # Orchestrator: fan-out + synthesis
+│   │   ├── boardroom-client.ts # streamAgentResponse / streamConsensus
+│   │   ├── boardroom-types.ts  # AgentRole, ROLES, PRESET_BOARDS, …
+│   │   └── components/         # AgentPanel, ConsensusPanel, BoardroomInput
+│   ├── dojo/
+│   │   ├── DojoPage.tsx        # N-model grid + judge + scoreboard
+│   │   ├── dojo-client.ts      # streamContestant / streamJudge
+│   │   └── dojo-types.ts       # DojoRubric, JudgeResult, …
+│   └── lib/
+│       └── opencode-client.ts  # All Ollama HTTP: chat stream, tags, ps, status
+└── src-tauri/
+    ├── src/lib.rs              # get_system_stats, run_diagnostic_script, shutdown
+    └── Cargo.toml              # sysinfo + tauri + serde
+```
+
+### Key Patterns
+
+| Pattern | Where used |
+|---------|-----------|
+| `useRef` accumulator + functional `setState` | Streaming fan-out in Boardroom and Dojo — avoids stale closures |
+| Module-level `let _persistedLog` | DiagnosticsPage log survives React remount (tab switch) |
+| `AbortController` per stream | Every stream independently stoppable; `stopAll()` aborts the entire set |
+| CSS custom property `--tab-color` / `--role-color` | NavBar tabs and BoardroomPage agent panels take per-entity colour from data |
+| `localStorage` persistence | Chat history · selected model · Dojo scoreboard |
+| Drag-and-drop via HTML5 `dataTransfer` | Model rows → Dojo tab; carries model name string |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Desktop shell | [Tauri 2](https://tauri.app) |
+| UI framework | [React 19](https://react.dev) with TypeScript strict mode |
+| Build tool | [Vite 7](https://vite.dev) (dev server port 1420) |
+| Rust runtime | sysinfo · serde · tauri-plugin-opener |
+| AI backend | [Ollama](https://ollama.com) — `/api/chat` · `/api/tags` · `/api/ps` |
+| Markdown | react-markdown · remark-gfm · rehype-highlight |
+| Package manager | pnpm |
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** 18+ and **pnpm**
-- **Rust** 1.70+ (for Tauri)
-- **Ollama** running on `10.0.0.155:18080`
-- **OpenCode** installed and configured
+- **Node.js** 18+ and **pnpm** (`npm i -g pnpm`)
+- **Rust** 1.75+ — [install via rustup](https://rustup.rs)
+- **Tauri CLI** — `cargo install tauri-cli`
+- **Ollama** running and reachable (default: `http://10.0.0.155:18080`)
 
-### Installation
+### Run in development
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd aionet
-
-# Install dependencies
+git clone https://github.com/openmindx/openmind.git
+cd openmind
 pnpm install
-
-# Start in development mode
-pnpm tauri dev
+pnpm tauri dev        # opens native window with HMR
 ```
 
-### First Run
-
-1. Ensure Ollama is reachable at `10.0.0.155:18080`
-2. Optionally start OpenCode: `opencode serve --port 8080`
-3. Launch OpenMind: `pnpm tauri dev`
-4. The UI will show live connection status and retry automatically every 15 s
-
-See **[Setup Guide](./docs/SETUP_COMPLETE.md)** for detailed instructions.
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **Tauri** - Native desktop framework
-- **React** 19 - UI library
-- **TypeScript** - Type-safe JavaScript
-- **Vite** - Fast build tool
-- **AI SDK** - AI component library
-- **shadcn/ui** - UI components
-
-### Backend
-- **Rust** - Tauri backend
-- **OpenCode** - AI coding agent
-- **Ollama** - AI model server
-- **MCP** - Model Context Protocol for tool integration
-
-### AI Models
-- **Qwen3 Coder 30B** - Primary coding model
-- **DeepSeek Coder V2** - Strong reasoning
-- **Mistral Nemo 12B** - Fast, lightweight
-- **Gemma3 27B** - Google's model
-
----
-
-## 📖 Project Structure
-
-```
-aionet/
-├── docs/                        # 📚 Documentation
-│   ├── INDEX.md                 # Documentation index
-│   ├── PROJECT_SUMMARY.md       # What's built & planned
-│   ├── USAGE.md                 # User guide
-│   ├── SETUP_COMPLETE.md        # Setup guide
-│   ├── OPENCODE_MANUAL.md       # OpenCode integration
-│   ├── AI_COMPONENTS_CATALOG.md # Component catalog
-│   └── SYNC_SCRIPT_README.md    # Model sync tool
-├── src/                         # Frontend source
-│   ├── App.tsx                  # Main component
-│   ├── main.tsx                 # Entry point
-│   └── components/              # React components
-├── src-tauri/                   # Rust backend
-│   ├── src/                     # Rust source
-│   ├── Cargo.toml               # Rust dependencies
-│   └── tauri.conf.json          # Tauri config
-├── public/                      # Static assets
-├── package.json                 # Node dependencies
-├── sync-ollama-models.sh        # Model sync script
-├── test-opencode-ollama.sh      # Test script
-└── README.md                    # This file
-
-# docs/ also contains PROJECT_SUMMARY.md
-```
-
----
-
-## 🎨 Development
-
-### Available Scripts
+### Frontend only (no native window)
 
 ```bash
-# Development mode with hot reload
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Preview production build
-pnpm preview
-
-# Start Tauri in development mode
-pnpm tauri dev
-
-# Build Tauri application
-pnpm tauri build
+pnpm dev              # http://localhost:1420
 ```
 
-### Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/)
-- [Tauri Extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
-- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-- [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-
----
-
-## 🧪 Testing
-
-### Test OpenCode + Ollama Integration
+### Production build
 
 ```bash
-./test-opencode-ollama.sh
+pnpm tauri build      # creates installer in src-tauri/target/release/bundle/
 ```
 
-### Sync Ollama Models
+---
+
+## Diagnostics Scripts
+
+Three shell utilities live in `diagnostics/` and can be run from the **Diagnostics** tab in the UI or directly from the terminal:
 
 ```bash
-./sync-ollama-models.sh
+# End-to-end OpenCode + Ollama integration test
+./diagnostics/test-opencode-ollama.sh
+
+# LAN discovery, connectivity verification, curl command map
+./diagnostics/curlllama.sh
+
+# Write available Ollama models to OpenCode config
+./diagnostics/sync-ollama-models.sh
 ```
 
-See **[Testing Documentation](./docs/SETUP_COMPLETE.md#testing)** for more details.
-
 ---
 
-## 🔧 Configuration
+## Configuration
 
-### OpenCode Configuration
+Edit `src/lib/opencode-client.ts` → `defaultConfig`:
 
-Edit `~/.config/opencode/opencode.json`:
-
-```json
-{
-  "provider": {
-    "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
-      "options": {
-        "baseURL": "http://10.0.0.155:18080/v1"
-      },
-      "models": {
-        "qwen3-coder:30b": {
-          "name": "Qwen3 Coder 30B",
-          "tools": true
-        }
-      }
-    }
-  }
-}
+```typescript
+export const defaultConfig = {
+  ollamaUrl: 'http://10.0.0.155:18080',   // change to your Ollama host
+  model:     'qwen3-coder:30b',            // default model
+};
 ```
 
-See **[Configuration Guide](./docs/SETUP_COMPLETE.md#configuration-file-details)** for full details.
+A settings panel (edit URL/port without touching source) is on the roadmap.
 
 ---
 
-## 📊 Current Status
+## Roadmap
 
-### Completed
-- Tauri 2 desktop shell with Rust backend
-- React chat interface with message history
-- Ollama live health polling (15 s) with diagnostic banner
-- Model listing from Ollama API
-- Keyboard shortcuts (Ctrl+Q / Cmd+Q)
-- Documentation and utility scripts
+See **[docs/ROADMAP.md](./docs/ROADMAP.md)** for the full planned feature list.
 
-### Planned
-- OpenCode session-based streaming integration
-- MCP tool integration (file ops, API access)
-- Code execution sandbox
-- Persistent conversation history
-- Model selector UI
+Selected upcoming items:
+
+- [ ] Settings modal — configure Ollama URL + port in-app
+- [ ] Message editing and response regeneration
+- [ ] Multiple named conversation sessions
+- [ ] In-app model browser and pull / delete
+- [ ] `flexlayout-react` multi-panel workspace
+- [ ] Slash commands — `/model`, `/boardroom`, `/dojo`, `/clear`, `/export`
+- [ ] N-way Dojo tournament bracket with round-robin view
+- [ ] Boardroom vote display — which advisors agreed / diverged
 
 ---
 
-## 🤝 Contributing
+## Documentation
 
-Contributions are welcome! Areas of focus:
-
-- **Frontend**: React components and UI/UX improvements
-- **Backend**: OpenCode and Ollama integration enhancements
-- **Documentation**: Guides, tutorials, and examples
-- **Testing**: Automated tests and quality assurance
-- **Features**: New capabilities and tools
-
----
-
-## 📄 License
-
-[Add license information]
+| Document | Description |
+|----------|-------------|
+| [ROADMAP.md](./docs/ROADMAP.md) | Feature backlog organised by area |
+| [BOARDROOM.md](./docs/BOARDROOM.md) | Boardroom mode architecture and design notes |
+| [DOJO.md](./docs/DOJO.md) | Dojo evaluation harness documentation |
+| [INDEX.md](./docs/INDEX.md) | Documentation index |
 
 ---
 
-## 🔗 Resources
+## License
 
-### Documentation
-- [Complete Documentation](./docs/INDEX.md)
-- [Usage Guide](./docs/USAGE.md)
-- [Setup Guide](./docs/SETUP_COMPLETE.md)
-
-### External Links
-- [OpenCode](https://github.com/stackblitz/opencode)
-- [Ollama](https://ollama.ai)
-- [Tauri](https://tauri.app)
-- [AI SDK](https://sdk.vercel.ai)
-- [MCP Protocol](https://modelcontextprotocol.io)
+MIT License — see [LICENSE](./LICENSE) for details.
 
 ---
 
-## 💬 Support
-
-- 📖 [Documentation](./docs/INDEX.md)
-- 🐛 [Report Issues](https://github.com/your-repo/issues)
-- 💡 [Request Features](https://github.com/your-repo/discussions)
-- ❓ [Get Help](./docs/USAGE.md#getting-help)
-
----
-
-**Built with ❤️ using Tauri, React, and local AI**
-
-*Last updated: 2026-02-11*
+© 2026 Professor Codephreak · Built with [Tauri](https://tauri.app) · [React](https://react.dev) · [Ollama](https://ollama.com)

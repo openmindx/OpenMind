@@ -12,3 +12,5 @@ export { DiagnosticsPage } from './DiagnosticsPage';
 export { ModelPicker } from './ModelPicker';
 export { FloatingChat } from './FloatingChat';
 export { ConnectionStatus } from './ConnectionStatus';
+export { NavBar } from './NavBar';
+export type { AppTab } from './NavBar';
