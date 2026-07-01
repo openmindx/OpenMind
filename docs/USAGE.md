@@ -1,607 +1,195 @@
 # OpenMind Usage Guide
 
-**Project:** OpenMind - AI-Powered Coding Interface
+**Project:** OpenMind — Local + Cloud AI Chat Interface
 **Version:** 0.1.0
-**Last Updated:** 2026-02-11
+**Last Updated:** 2026-07-01
 
 ---
 
-## 📚 Quick Links
+## Quick Links
 
-- [← Back to Documentation Index](./INDEX.md)
-- [← Back to Main README](../README.md)
-- [Setup Guide](./SETUP_COMPLETE.md)
-
----
-
-## 🎯 Overview
-
-OpenMind is an AI-powered desktop application that helps you write code, debug issues, and learn programming concepts through natural language conversations with advanced AI models.
-
-### Key Features
-
-- **Natural Language Coding**: Describe what you want in plain English
-- **Local AI Models**: Runs on your network - no cloud dependency
-- **Multiple Models**: Switch between different AI models for various tasks
-- **Code Execution**: Safe sandbox environment for running code
-- **File Operations**: Work with your project files directly
-- **Streaming Responses**: See AI responses in real-time
+- [← Documentation Index](./INDEX.md)
+- [← Main README](../README.md)
+- [Technical Reference](./TECHNICAL.md)
+- [Settings & Cloud Models](./SETTINGS.md)
+- [Dojo](./DOJO.md) · [Boardroom](./BOARDROOM.md)
 
 ---
 
-## 🚀 Starting the Application
+## Overview
+
+OpenMind is a native desktop app (Tauri 2 + React 19) for chatting with AI models. It talks to a
+**local Ollama server** by default (`http://localhost:11434`) and can optionally use **Ollama Cloud**
+(`gpt-oss` models) when you add an API key. Everything is configurable at runtime from the **Settings**
+tab — no rebuild required.
+
+**Five tabs (top nav):**
+
+| Tab | Purpose |
+|-----|---------|
+| **Chat** | Single-model streaming conversation |
+| **Boardroom** | Multi-agent consensus — many advisors + a synthesizer ([details](./BOARDROOM.md)) |
+| **Dojo** | Head-to-head model evaluation with a judge + scoreboard ([details](./DOJO.md)) |
+| **Diagnostics** | Server health, model management, endpoint tests, scripts |
+| **Settings** | Local endpoint + Ollama Cloud key ([details](./SETTINGS.md)) |
+
+---
+
+## Starting the Application
 
 ### Prerequisites
 
-Before starting OpenMind, ensure:
+1. **Ollama installed and running** locally (`ollama serve`, default port `11434`).
+2. **At least one model pulled**, e.g. `ollama pull llama3.2`.
+3. **Dependencies installed** (`pnpm install`).
 
-1. **Ollama server is running** at `10.0.0.155:18080`
-2. **OpenCode server is running** (if using server mode)
-3. **Node.js dependencies are installed**
-
-### Development Mode
+### Development mode
 
 ```bash
-# From project directory
-cd /home/hacker/aionet
-
-# Install dependencies (first time only)
-pnpm install
-
-# Start in development mode
-pnpm tauri dev
+pnpm tauri dev          # or: pnpm run tauri:dev
 ```
 
-The application window will open automatically.
+The OpenMind window opens automatically with hot reload.
 
-### Production Mode
+### Production build
 
 ```bash
-# Build the application
-pnpm tauri build
-
-# Run the built application
-./src-tauri/target/release/boardroom
+pnpm tauri build        # or: pnpm run tauri:build
 ```
+
+Bundled binary + installers land under `src-tauri/target/release/bundle/`.
 
 ---
 
-## 💬 Using the Chat Interface
+## The Chat Tab
 
-### Starting a Conversation
+1. Make sure the connection widget (top-left) shows **Online**.
+2. Pick a model from the **model picker** (top-right).
+3. Type in the input box and press **Enter** (Shift+Enter for a new line).
+4. The response streams in token by token. Press **■ Stop** to halt (partial text is kept).
+5. **Clear** removes the conversation; history otherwise persists across restarts
+   (`localStorage`).
 
-1. Launch OpenMind
-2. Type your question or request in the input field at the bottom
-3. Press `Enter` or click the send button
-4. Wait for the AI response to stream in
-
-### Example Conversations
-
-#### Simple Code Generation
-```
-You: Write a function that calculates the factorial of a number
-
-AI: [Provides code with explanation]
-```
-
-#### Debugging Help
-```
-You: I have a bug where my React component isn't re-rendering when state changes
-
-AI: [Asks clarifying questions, then provides solution]
-```
-
-#### Learning
-```
-You: Explain how async/await works in JavaScript
-
-AI: [Provides detailed explanation with examples]
-```
-
-### Conversation Tips
-
-- **Be specific**: The more details you provide, the better the response
-- **Provide context**: Mention the programming language, framework, or environment
-- **Ask follow-ups**: Continue the conversation to refine solutions
-- **Show code**: Copy/paste code snippets for debugging help
+The connection widget links to **Diagnostics** when offline. If the local server is down but you've
+selected a **cloud** model with a valid key, you can still chat.
 
 ---
 
-## 🔀 Switching Models
+## The Model Picker
 
-Different models have different strengths. Choose based on your task:
+Opens from the top-right button. Each row supports:
 
-### Available Models
+| Control | Action |
+|---------|--------|
+| **Click the name** | Select that model for the Chat tab |
+| **▶ / ■ button** | **Start** (load) or **Stop** (unload) a *local* model in memory |
+| **⚡ button** | Open a detachable **floating chat** window for that model |
+| **Drag the row** | Drop onto the **Dojo** tab to add it as a contestant |
 
-#### Qwen3 Coder 30B (Default)
-- **Best for**: Complex coding tasks, refactoring, architecture
-- **Strengths**: Deep code understanding, detailed explanations
-- **Use when**: Working on challenging problems
+Badges: `running` (green) = loaded in memory · `cloud` (blue) = an Ollama Cloud model.
+Cloud models have no start/stop (they're hosted).
 
-```
-Model ID: ollama/qwen3-coder:30b
-```
+### Starting / stopping local models
 
-#### DeepSeek Coder V2
-- **Best for**: Problem-solving, algorithmic thinking
-- **Strengths**: Strong reasoning, step-by-step solutions
-- **Use when**: Need logical breakdown of complex problems
-
-```
-Model ID: ollama/deepseek-coder-v2
-```
-
-#### Mistral Nemo 12B
-- **Best for**: Quick questions, simple tasks
-- **Strengths**: Fast responses, lower resource usage
-- **Use when**: Need quick answers or working on simpler code
-
-```
-Model ID: ollama/mistral-nemo
-```
-
-### How to Switch Models
-
-1. Click the **Model Selector** dropdown (top of chat)
-2. Choose your desired model
-3. Continue chatting - new messages use the selected model
+- **Start** pins a model in memory (`keep_alive:-1`) so the first message has no cold-start delay.
+- **Stop** evicts it (`keep_alive:0`) to free RAM/VRAM.
+- The same controls appear in **Diagnostics → Available Models** with `▶ Start` / `■ Stop` buttons
+  and live VRAM readouts.
 
 ---
 
-## 💻 Code Execution
+## Floating Chats
 
-OpenMind can execute code safely in a sandboxed environment.
-
-### Running Code
-
-When the AI provides code, you'll see:
-
-1. **Syntax-highlighted code block** with the code
-2. **Copy button** to copy code to clipboard
-3. **Run button** to execute the code (if applicable)
-
-### Supported Languages
-
-- JavaScript/TypeScript
-- Python
-- Bash/Shell scripts
-- SQL
-- HTML/CSS
-
-### Safety Notes
-
-- Code runs in an isolated sandbox
-- File system access is restricted
-- Network access may be limited
-- Always review code before running
+Click the **⚡** on any model to pop out an independent, draggable chat window for that specific
+model. Multiple can be open at once — handy for comparing two models side by side without leaving
+the main conversation. Each floating chat has its own history, Stop, and Clear.
 
 ---
 
-## 📁 File Operations
+## Using Ollama Cloud (gpt-oss)
 
-OpenMind can help you work with files in your project.
+The free tier is **$0** but still needs an ollama.com account + API key. Quick setup:
 
-### Reading Files
+1. Open **Settings → Ollama Cloud**.
+2. Tick **Enable cloud models**.
+3. Click **Sign in to Ollama ↗** to open ollama.com and create an API key.
+4. Paste the key, click **Test Cloud Key**, then **Save Settings**.
+5. `gpt-oss:20b` and `gpt-oss:120b` now appear in the picker (with a `cloud` badge) and route to
+   the cloud automatically.
 
-```
-You: Show me the contents of src/App.tsx
-
-AI: [Displays file contents with syntax highlighting]
-```
-
-### Creating Files
-
-```
-You: Create a new component called UserProfile.tsx
-
-AI: [Generates the component and offers to save it]
-```
-
-### Editing Files
-
-```
-You: In src/App.tsx, add error handling to the fetch call
-
-AI: [Shows the changes and offers to apply them]
-```
-
-### File Tree Navigation
-
-- View your project structure in the sidebar
-- Click folders to expand/collapse
-- Click files to view contents
-- Right-click for context menu options
+Full details, limits, and troubleshooting: **[SETTINGS.md](./SETTINGS.md)**.
 
 ---
 
-## 🎨 UI Components
+## Diagnostics Tab
 
-### Main Chat Area
+A one-stop panel for health and model management:
 
-The central area where conversations happen:
-- Messages appear in chronological order
-- User messages aligned right
-- AI messages aligned left
-- Code blocks with syntax highlighting
-- Loading indicators during AI processing
-
-### Sidebar
-
-Navigation and information:
-- File tree (if enabled)
-- Model selector
-- Conversation history
-- Settings
-
-### Input Area
-
-Where you type messages:
-- Multiline support (Shift+Enter for new line)
-- Attachment button for files
-- Send button
-- Character counter (if enabled)
-
-### Code Blocks
-
-Enhanced code display:
-- Syntax highlighting
-- Language detection
-- Copy button
-- Run button (when applicable)
-- Line numbers
-- Word wrap toggle
+| Card | What it does |
+|------|--------------|
+| **Connection Status** | Online/offline, latency, last-checked, server URL, Ollama version. **Probe Now** forces a check. |
+| **System Stats** | Live CPU % and network throughput (from the Rust backend). |
+| **Endpoint Tests** | Probes `/api/tags`, `/api/version`, `/v1/models`; expand a row for the raw body. |
+| **Available Models** | Every model with size/params/quant; **▶ Start / ■ Stop** and VRAM for running ones; cloud models flagged. |
+| **Chat Inference Test** | Sends a tiny non-streaming request to verify end-to-end inference. |
+| **Diagnostic Scripts** | Runs the bundled bash scripts and shows captured output. |
+| **Connection Log** | Rolling, timestamped event log. |
 
 ---
 
-## ⚙️ Settings & Configuration
-
-### User Preferences
-
-Access settings via the gear icon:
-
-- **Theme**: Light/Dark/Auto
-- **Font Size**: Adjust text size
-- **Code Font**: Choose monospace font
-- **Auto-run**: Automatically execute safe code
-- **Streaming**: Enable/disable response streaming
-
-### Model Configuration
-
-Advanced users can configure models in:
-```
-~/.config/opencode/opencode.json
-```
-
-See [Setup Guide](./SETUP_COMPLETE.md#configuration-file-details) for details.
-
----
-
-## 🎯 Common Use Cases
-
-### 1. Learning to Code
-
-**Scenario**: You're learning React and don't understand hooks.
-
-```
-You: Explain React hooks with examples. Start with useState.
-
-AI: [Provides explanation with code examples]
-
-You: Now show me a practical example using useState in a todo list
-
-AI: [Provides complete working example]
-```
-
-### 2. Debugging
-
-**Scenario**: Your code has a bug you can't figure out.
-
-```
-You: I'm getting "TypeError: Cannot read property 'map' of undefined"
-     in this code: [paste code]
-
-AI: [Analyzes the code, identifies the issue, suggests fix]
-```
-
-### 3. Code Review
-
-**Scenario**: You want feedback on your code quality.
-
-```
-You: Review this function and suggest improvements:
-     [paste code]
-
-AI: [Provides feedback on performance, readability, best practices]
-```
-
-### 4. Refactoring
-
-**Scenario**: Old code needs to be modernized.
-
-```
-You: Refactor this class component to use hooks
-
-AI: [Provides refactored version with explanations]
-```
-
-### 5. API Integration
-
-**Scenario**: You need to integrate a third-party API.
-
-```
-You: Show me how to fetch data from the GitHub API using fetch
-
-AI: [Provides code with error handling and TypeScript types]
-```
-
-### 6. Testing
-
-**Scenario**: You need to write tests for your code.
-
-```
-You: Write unit tests for this function using Jest
-
-AI: [Generates comprehensive test cases]
-```
-
----
-
-## ⚡ Keyboard Shortcuts
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
 | `Enter` | Send message |
-| `Shift+Enter` | New line in message |
-| `Ctrl/Cmd+C` | Copy selected code |
-| `Ctrl/Cmd+V` | Paste into input |
-| `Ctrl/Cmd+K` | Focus search |
-| `Ctrl/Cmd+L` | Clear chat |
-| `Ctrl/Cmd+,` | Open settings |
-| `Esc` | Cancel current operation |
+| `Shift+Enter` | New line in the input |
+| `Ctrl+Q` / `⌘+Q` | Quit the app |
+| `Ctrl+W` / `⌘+W` | Quit the app |
 
 ---
 
-## 🔍 Advanced Features
+## Troubleshooting
 
-### Chain of Thought
+### Model list is empty / "Ollama unreachable"
+1. Confirm Ollama is running: `curl http://localhost:11434/api/tags`.
+2. Check the **Settings → Local Ollama Server** URL matches where Ollama is listening; use
+   **Test Connection**.
+3. Pull at least one model: `ollama pull llama3.2`.
+4. Hit **Probe Now** in Diagnostics.
 
-See the AI's reasoning process:
-- Enable "Show Reasoning" in settings
-- Watch step-by-step problem solving
-- Understand how solutions are derived
+### Cloud models don't work
+1. **Settings → Test Cloud Key** — a `401/403` means the key is wrong or expired.
+2. Ensure **Enable cloud models** is ticked and the key is saved.
+3. Free tier allows **1 concurrent model** and is GPU-time metered; heavy use may queue.
+   See [SETTINGS.md](./SETTINGS.md).
 
-### Tool Usage
+### First message is slow
+That's the model cold-starting. **Start** it from the picker or Diagnostics first, then chat.
 
-AI can use tools for extended capabilities:
-- File operations
-- Web searches
-- API calls
-- Database queries
-
-### Artifacts
-
-Complex outputs shown separately:
-- Large code files
-- Generated diagrams
-- Documentation
-- Test results
-
-### Context Management
-
-Control what information the AI sees:
-- Attach specific files
-- Reference previous messages
-- Set context window size
+### Packaged build can't reach local Ollama
+A production build's webview origin is `tauri://localhost`. Set `OLLAMA_ORIGINS` on the Ollama host
+(e.g. `OLLAMA_ORIGINS=*`) so it accepts requests from the app.
 
 ---
 
-## ❓ Troubleshooting
+## FAQ
 
-### AI Not Responding
+**Is my data sent to the cloud?**
+Only if you select a **cloud** model. Local models never leave your machine. Ollama Cloud states it
+does not log or train on prompts/responses.
 
-**Problem**: Message sent but no response appears.
+**Can I point at a remote Ollama box instead of localhost?**
+Yes — set its URL in **Settings → Local Ollama Server** (e.g. `http://10.0.0.155:11434`).
 
-**Solutions**:
-1. Check Ollama server status: `curl http://10.0.0.155:18080/api/tags`
-2. Verify network connectivity
-3. Check model is loaded
-4. Restart application
+**Can I use several models at once?**
+Yes — open multiple floating chats, or use **Dojo** (parallel evaluation) and **Boardroom**
+(multi-agent consensus).
 
-### Slow Responses
-
-**Problem**: AI takes a long time to respond.
-
-**Solutions**:
-1. Switch to a smaller model (Mistral Nemo)
-2. Check server load
-3. Reduce conversation length
-4. Clear chat history
-
-### Code Won't Run
-
-**Problem**: Code execution fails or doesn't work.
-
-**Solutions**:
-1. Check language is supported
-2. Verify code doesn't require restricted resources
-3. Review error messages
-4. Ask AI to fix the code
-
-### Models Not Available
-
-**Problem**: Cannot see or select certain models.
-
-**Solutions**:
-1. Run sync script: `./sync-ollama-models.sh`
-2. Verify models are on Ollama server
-3. Check OpenCode configuration
-4. Restart application
-
-### File Operations Failed
-
-**Problem**: Cannot read/write files.
-
-**Solutions**:
-1. Check file permissions
-2. Verify path is correct
-3. Ensure file exists
-4. Review security settings
+**Where is history stored?**
+In the browser `localStorage` of the app (`openmind-messages`); it survives restarts until you Clear.
 
 ---
 
-## 💡 Tips & Best Practices
+**Navigation:** [← Index](./INDEX.md) · [Technical →](./TECHNICAL.md) · [Settings & Cloud →](./SETTINGS.md)
 
-### Getting Better Responses
-
-1. **Be Specific**: "Fix this bug" → "Fix the TypeError on line 42 in this React component"
-2. **Provide Context**: Include relevant code, error messages, environment details
-3. **Break Down Complex Tasks**: Split large requests into smaller steps
-4. **Iterate**: Refine requests based on responses
-5. **Use Examples**: Show what you want with examples
-
-### Efficient Workflows
-
-1. **Use File Attachments**: Upload files instead of copying large amounts of code
-2. **Save Good Responses**: Copy important code to your project immediately
-3. **Version Control**: Commit before major AI-suggested changes
-4. **Test Incrementally**: Test each suggested change before moving on
-5. **Learn Patterns**: Note what prompts work well for future use
-
-### Model Selection Strategy
-
-1. **Start Fast**: Use Mistral Nemo for initial exploration
-2. **Scale Up**: Switch to Qwen3 Coder for complex work
-3. **Special Cases**: Use DeepSeek for algorithmic problems
-4. **Context Matters**: Larger models for larger context requirements
-
----
-
-## 📊 Understanding Responses
-
-### Response Structure
-
-AI responses typically include:
-
-1. **Explanation**: What the solution does and why
-2. **Code**: Actual implementation
-3. **Usage**: How to use the code
-4. **Notes**: Important considerations or warnings
-
-### Code Block Format
-
-```typescript
-// Comments explain the code
-function example() {
-  // Implementation details
-  return result;
-}
-```
-
-### Streaming Indicators
-
-- **Thinking...**: AI is processing your request
-- **Token counter**: Shows response progress
-- **Cursor blink**: Active streaming
-- **Complete checkmark**: Response finished
-
----
-
-## 🆘 Getting Help
-
-### In-App Help
-
-- Click the `?` icon for context-sensitive help
-- Hover tooltips on UI elements
-- Settings panel documentation
-
-### Documentation
-
-- [Main Documentation Index](./INDEX.md)
-- [Setup Guide](./SETUP_COMPLETE.md)
-- [OpenCode Manual](./OPENCODE_MANUAL.md)
-- [Component Catalog](./AI_COMPONENTS_CATALOG.md)
-
-### Common Questions
-
-**Q: Can I use OpenMind offline?**
-A: Yes, as long as your Ollama server is accessible on the local network.
-
-**Q: Is my code sent to the cloud?**
-A: No, all processing happens locally on your Ollama server.
-
-**Q: Can I add my own models?**
-A: Yes, pull models to Ollama and run the sync script. See [Sync Script Guide](./SYNC_SCRIPT_README.md).
-
-**Q: How much RAM do I need?**
-A: Depends on model size. 30B models need ~24GB RAM on the Ollama server.
-
-**Q: Can I use multiple models simultaneously?**
-A: Not in the same conversation, but you can start multiple conversations.
-
----
-
-## 📚 Learning Resources
-
-### Tutorials
-
-1. [Getting Started with OpenMind](#starting-the-application)
-2. [Your First AI Conversation](#using-the-chat-interface)
-3. [Advanced Prompting Techniques](#getting-better-responses)
-4. [Working with Files](#file-operations)
-
-### Example Prompts
-
-See [Example Conversations](#example-conversations) for inspiration.
-
-### Video Guides
-
-[Coming soon]
-
----
-
-## 🔄 Updates & Maintenance
-
-### Keeping OpenMind Updated
-
-```bash
-# Pull latest code
-git pull
-
-# Update dependencies
-pnpm install
-
-# Rebuild application
-pnpm tauri build
-```
-
-### Model Updates
-
-```bash
-# Update models on Ollama server
-ollama pull qwen3-coder:30b
-
-# Sync to OpenCode
-./sync-ollama-models.sh
-```
-
----
-
-## 📝 Feedback & Support
-
-Your feedback helps improve OpenMind:
-
-- Report bugs via GitHub Issues
-- Suggest features in Discussions
-- Contribute code via Pull Requests
-- Share your experience on social media
-
----
-
-**Navigation:**
-- [← Documentation Index](./INDEX.md)
-- [Setup Guide →](./SETUP_COMPLETE.md)
-- [OpenCode Manual →](./OPENCODE_MANUAL.md)
-
----
-
-*Last updated: 2026-02-11*
+*Last updated: 2026-07-01*

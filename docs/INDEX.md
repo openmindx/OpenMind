@@ -2,17 +2,18 @@
 
 **Project:** OpenMind — AI Interface powered by Ollama & Tauri
 **Tech Stack:** Tauri 2 · React 19 · TypeScript · Rust
-**Last Updated:** 2026-02-27 — Boardroom module added
+**Last Updated:** 2026-07-01 — Settings tab, cloud routing, model start/stop
 
 ---
 
 ## Quick Navigation
 
-- [Technical Reference](./TECHNICAL.md) — Stack, architecture, all config values, API details
+- [Usage Guide](./USAGE.md) — Tabs, chat, model picker, start/stop, troubleshooting
+- [Settings & Cloud Models](./SETTINGS.md) — Local endpoint, Ollama Cloud (gpt-oss), free tier
+- [Technical Reference](./TECHNICAL.md) — Stack, architecture, routing, all config values, API details
 - [Boardroom](./BOARDROOM.md) — Multi-agent consensus mode: roles, synthesis, preset boards
 - [Dojo](./DOJO.md) — Multi-model evaluation mode: architecture, types, judge prompt, scoreboard
 - [Roadmap](./ROADMAP.md) — Planned features and todo checklist
-- [Usage Guide](./USAGE.md) — How to use the chat interface
 - [Setup Guide](./SETUP_COMPLETE.md) — Installation and configuration
 - [OpenCode Integration Manual](./OPENCODE_MANUAL.md) — OpenCode agent details
 - [Research Notes](./RESEARCH_OPENCODE_ACP_OLLAMA.md) — Protocol deep-dives
@@ -21,7 +22,7 @@
 
 ## What is OpenMind?
 
-OpenMind is a native desktop application that puts a responsive AI chat interface in front of locally-running large language models. It connects directly to an **Ollama** server over the local network — no cloud dependency, no telemetry.
+OpenMind is a native desktop application that puts a responsive AI chat interface in front of large language models. It talks to a **local Ollama** server by default (`http://localhost:11434`) and can optionally use **Ollama Cloud** (`gpt-oss` models) when an API key is supplied. Endpoint and cloud settings are editable at runtime in the **Settings** tab.
 
 Key components:
 
@@ -29,9 +30,9 @@ Key components:
 |-----------|------|
 | **Tauri 2** | Native desktop shell (Rust + WebView) |
 | **React 19** | Chat UI rendered inside the WebView |
-| **Ollama** | Local inference server at `10.0.0.155:18080` |
-| **OpenCode** | Optional AI coding agent (port 8080) — not yet integrated |
-| **MCP** | Model Context Protocol — tool/data integration — not yet integrated |
+| **Ollama (local)** | Local inference server — default `http://localhost:11434` |
+| **Ollama Cloud** | Optional hosted models (`gpt-oss:20b/120b`) via `ollama.com` + API key |
+| **Model routing** | Centralized in `resolveEndpoint()` — local vs. cloud per model |
 
 ---
 
@@ -49,7 +50,8 @@ Key components:
 
 | Document | Description |
 |----------|-------------|
-| [Technical Reference](./TECHNICAL.md) | Stack, directory layout, state, Rust commands, all config values |
+| [Settings & Cloud Models](./SETTINGS.md) | Local endpoint, Ollama Cloud setup, free-tier limits, routing |
+| [Technical Reference](./TECHNICAL.md) | Stack, directory layout, state, routing, Rust commands, all config values |
 | [Boardroom](./BOARDROOM.md) | Multi-agent consensus mode — roles, client functions, synthesis prompt, preset boards |
 | [Dojo](./DOJO.md) | Multi-model evaluation mode — architecture, types, judge prompt, scoreboard logic |
 | [Roadmap](./ROADMAP.md) | Planned features as a checkbox todo list |
@@ -65,8 +67,8 @@ Key components:
 ```
 OpenMind Desktop (Tauri 2)
 ├── Frontend (React 19 / TypeScript)
-│   ├── App.tsx                  — chat UI, model selector, streaming, system stats
-│   ├── lib/opencode-client.ts   — Ollama HTTP client + diagnostics
+│   ├── App.tsx                  — chat UI, model picker, streaming, tabs, settings state
+│   ├── lib/opencode-client.ts   — settings + endpoint routing + Ollama HTTP client
 │   ├── boardroom/               — Boardroom multi-agent consensus module
 │   │   ├── BoardroomPage.tsx    — orchestrator: fan-out, synthesize, abort
 │   │   ├── boardroom-client.ts  — streamAgentResponse(), streamConsensus()
@@ -80,60 +82,56 @@ OpenMind Desktop (Tauri 2)
 │   │   ├── index.ts             — barrel export
 │   │   └── components/          — ModelPanel, Scoreboard, DojoInput
 │   └── components/
-│       ├── DiagnosticsPage.tsx  — endpoint tests, model list, inference test, log
+│       ├── NavBar.tsx           — tab bar (chat / boardroom / dojo / diagnostics / settings)
+│       ├── ModelPicker.tsx      — model dropdown + start/stop + cloud badges
+│       ├── SettingsPage.tsx     — local endpoint + Ollama Cloud key config
+│       ├── ConnectionStatus.tsx — header online/offline widget
+│       ├── FloatingChat.tsx     — detachable per-model chat window
+│       ├── DiagnosticsPage.tsx  — endpoint tests, model mgmt, inference test, scripts, log
 │       ├── MarkdownMessage.tsx  — markdown + syntax-highlighted code blocks
 │       ├── Layout, Button, Panel, QuitButton
 │       └── index.ts
 └── Backend (Rust)
-    └── src-tauri/src/lib.rs     — Tauri commands: shutdown_app, get_system_stats, greet
+    └── src-tauri/src/lib.rs     — Tauri commands: shutdown_app, get_system_stats,
+                                    run_diagnostic_script, greet
 
 External
-└── Ollama server (10.0.0.155:18080)
-    ├── GET  /api/tags              — list models / health check
-    ├── GET  /api/version           — server version
-    ├── GET  /api/ps                — running models
-    └── POST /api/chat              — streaming chat with full history
+├── Ollama (local, default http://localhost:11434)
+│   ├── GET  /api/tags     — list models / health check
+│   ├── GET  /api/version  — server version
+│   ├── GET  /api/ps       — running models
+│   ├── POST /api/generate — start/stop a model (keep_alive -1 / 0)
+│   └── POST /api/chat     — streaming chat with full history
+└── Ollama Cloud (https://ollama.com, optional)
+    └── POST /api/chat     — gpt-oss models, Authorization: Bearer <key>
 ```
 
-The frontend polls `/api/tags` every **15 seconds** to track server availability. When Ollama is unreachable a diagnostic banner displays the error reason and last-checked time, with a manual **Retry** button.
+The frontend polls the local server's `/api/tags` every **15 seconds** to track availability. When
+it's unreachable, an offline strip links to Diagnostics; cloud models remain usable.
 
 ---
 
 ## Ollama API
 
-Base URL: `http://10.0.0.155:18080`
+Local base URL (default): `http://localhost:11434` · Cloud base URL: `https://ollama.com`
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/tags` | GET | List models & health probe |
 | `/api/version` | GET | Server version string |
 | `/api/ps` | GET | Running (loaded) models |
-| `/api/chat` | POST | Streaming chat (full conversation history) |
+| `/api/generate` | POST | Start (`keep_alive:-1`) / stop (`keep_alive:0`) a local model |
+| `/api/chat` | POST | Streaming chat (full history); cloud adds a Bearer header |
 | `/v1/models` | GET | OpenAI-compatible model list |
-
----
-
-## OpenCode Server API (planned — not yet integrated)
-
-Base URL: `http://localhost:8080`
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/sessions` | POST | Create chat session |
-| `/api/sessions/:id/messages` | POST | Send message |
-| `/api/sessions/:id/messages/:msgId/stream` | GET | SSE response stream |
 
 ---
 
 ## Available Models
 
-| Model | Size | Purpose |
-|-------|------|---------|
-| `qwen3-coder:30b` | 18.5 GB | Default — primary coding model |
-| `deepseek-coder-v2` | 8.9 GB | Strong reasoning |
-| `qwen3:30b` | 18.5 GB | General purpose |
-| `gemma3:27b` | 17.4 GB | Google model |
-| `mistral-nemo` | 7 GB | Lightweight / fast |
+Local models are whatever you've pulled (`ollama list`) — e.g. `llama3.2`, `phi3`, `deepseek-r1`,
+`deepseek-coder`, `tinydolphin`. The picker populates automatically from `/api/tags`.
+
+Cloud models (when enabled with a key): `gpt-oss:20b`, `gpt-oss:120b`. See [SETTINGS.md](./SETTINGS.md).
 
 ---
 
@@ -141,9 +139,10 @@ Base URL: `http://localhost:8080`
 
 | File | Purpose |
 |------|---------|
-| `src/lib/opencode-client.ts` | Ollama URL, default model, timeout |
-| `~/.config/opencode/opencode.json` | OpenCode provider/model config |
-| `src-tauri/tauri.conf.json` | App name, window size, dev URL |
+| `src/lib/opencode-client.ts` | `defaultSettings` (local/cloud URLs, key), `CLOUD_MODELS`, default model, timeouts |
+| Settings tab (→ `localStorage` `openmind-settings`) | Runtime endpoint + cloud key overrides |
+| `src-tauri/tauri.conf.json` | App name, window size, dev URL, bundle |
+| `src-tauri/capabilities/default.json` | Permissions (core + opener) |
 | `vite.config.ts` | Vite port (1420) |
 
 ---
@@ -175,6 +174,10 @@ Base URL: `http://localhost:8080`
 - **Stop streaming** button — aborts in-progress generation mid-stream
 - **Dojo** — multi-model fan-out evaluation with judge scoring, blind mode, session scoreboard (see [DOJO.md](./DOJO.md))
 - **Boardroom** — multi-agent consensus: role-injected advisors (advocate, critic, analyst, devil's advocate, expert, generalist) fan out in parallel; synthesizer produces structured consensus (see [BOARDROOM.md](./BOARDROOM.md))
+- **Settings tab** — editable local Ollama endpoint + Ollama Cloud base URL/API key, persisted to `localStorage`, applied live (see [SETTINGS.md](./SETTINGS.md))
+- **Ollama Cloud (gpt-oss)** — `gpt-oss:20b/120b` routed to `ollama.com` with a Bearer key; usable even when local is offline; routing centralized in `resolveEndpoint()`
+- **Local model start/stop** — load (`keep_alive:-1`) / unload (`keep_alive:0`) from the model picker and Diagnostics, with running/VRAM badges
+- **Floating chats** — detachable, draggable per-model chat windows
 
 ### Planned
 
@@ -185,8 +188,8 @@ See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 - **Ultimate input field** — slash commands, `@model` targeting, file drop, voice input, prompt templates, token counter, per-session history
 - **flexlayout-react multi-panel UI** — drag, drop, and resize Chat / Boardroom / Dojo / Diagnostics panels; layout presets; layout persistence; panel maximise/restore
 - Multiple named conversation sessions with sidebar
-- Settings panel — editable Ollama URL, system prompt, sampling params
-- In-app model management (pull, delete, unload from VRAM)
+- Settings enhancements — system prompt, sampling params (temperature/top-p/num_ctx)
+- In-app model management — pull and delete (start/stop/unload already shipped)
 - File / image attachments for multimodal models
 - Message editing and response regeneration
 - Tauri system tray with connection status indicator
@@ -205,4 +208,4 @@ See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 
 ---
 
-*Last updated: 2026-02-27 — Boardroom module added*
+*Last updated: 2026-07-01 — Settings tab, cloud routing, model start/stop*
