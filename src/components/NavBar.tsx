@@ -1,6 +1,6 @@
 import './NavBar.css';
 
-export type AppTab = 'chat' | 'boardroom' | 'dojo' | 'diagnostics';
+export type AppTab = 'chat' | 'boardroom' | 'dojo' | 'diagnostics' | 'settings';
 
 interface TabDef {
   id: AppTab;
@@ -15,6 +15,7 @@ const TABS: TabDef[] = [
   { id: 'boardroom',   label: 'Boardroom',   glyph: '⬡', color: '#4caf50', desc: 'Multi-agent consensus' },
   { id: 'dojo',        label: 'Dojo',        glyph: '⊠', color: '#ab47bc', desc: 'Head-to-head evaluation' },
   { id: 'diagnostics', label: 'Diagnostics', glyph: '◈', color: '#ffa726', desc: 'System & server health' },
+  { id: 'settings',    label: 'Settings',    glyph: '⚙', color: '#78909c', desc: 'Endpoints & cloud models' },
 ];
 
 interface NavBarProps {

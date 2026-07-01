@@ -1,17 +1,17 @@
 /**
  * OpenMind Client
- * Connects to local Ollama server for AI inference
+ * Connects to a local Ollama server for inference, and (optionally) to
+ * Ollama Cloud (https://ollama.com) for hosted models such as gpt-oss.
+ *
+ * Routing is centralized in `resolveEndpoint(model)`: cloud model names are
+ * sent to the cloud base URL with a Bearer API key, everything else goes to
+ * the local server. All settings are persisted to localStorage and read live
+ * on every request, so changes in the Settings panel take effect immediately.
  */
 
 export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
-}
-
-export interface OpenCodeConfig {
-  serverUrl: string;
-  ollamaUrl: string;
-  model: string;
 }
 
 export interface ServerStatus {
@@ -36,22 +36,97 @@ export interface RunningModel {
   expiresAt: string;
 }
 
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export interface AppSettings {
+  /** Local Ollama server, e.g. http://localhost:11434 */
+  localUrl: string;
+  /** Ollama Cloud base URL */
+  cloudBaseUrl: string;
+  /** Ollama Cloud API key (from https://ollama.com) */
+  cloudApiKey: string;
+  /** Whether cloud models are offered in the picker */
+  cloudEnabled: boolean;
+}
+
+/** Curated Ollama Cloud models exposed when cloud is enabled. */
+export const CLOUD_MODELS = ['gpt-oss:20b', 'gpt-oss:120b'];
+
+export const defaultSettings: AppSettings = {
+  localUrl: 'http://localhost:11434',
+  cloudBaseUrl: 'https://ollama.com',
+  cloudApiKey: '',
+  cloudEnabled: false,
+};
+
+const SETTINGS_KEY = 'openmind-settings';
+
+function readSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch { /* ignore malformed */ }
+  return { ...defaultSettings };
+}
+
+// Live, mutable settings — read on every request so UI edits apply at once.
+let liveSettings: AppSettings = readSettings();
+
+export function getSettings(): AppSettings {
+  return liveSettings;
+}
+
+export function updateSettings(patch: Partial<AppSettings>): AppSettings {
+  liveSettings = { ...liveSettings, ...patch };
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(liveSettings));
+  } catch { /* ignore quota errors */ }
+  return liveSettings;
+}
+
+/** A model is a cloud model if it's in the curated list or carries the -cloud tag. */
+export function isCloudModel(model: string): boolean {
+  return model.endsWith('-cloud') || CLOUD_MODELS.includes(model);
+}
+
+/** Cloud model names to surface in the picker (only when enabled + keyed). */
+export function availableCloudModels(): string[] {
+  const s = liveSettings;
+  return s.cloudEnabled && s.cloudApiKey.trim() ? [...CLOUD_MODELS] : [];
+}
+
+/** Resolve the base URL + headers to use for a given model. */
+export function resolveEndpoint(model: string): { url: string; headers: Record<string, string> } {
+  const s = liveSettings;
+  if (isCloudModel(model)) {
+    return {
+      url: s.cloudBaseUrl.replace(/\/+$/, ''),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(s.cloudApiKey.trim() ? { Authorization: `Bearer ${s.cloudApiKey.trim()}` } : {}),
+      },
+    };
+  }
+  return {
+    url: s.localUrl.replace(/\/+$/, ''),
+    headers: { 'Content-Type': 'application/json' },
+  };
+}
+
+// ─── Client ──────────────────────────────────────────────────────────────────
+
+export interface OpenCodeConfig {
+  model: string;
+}
+
 export const defaultConfig: OpenCodeConfig = {
-  serverUrl: 'http://localhost:8080',
-  ollamaUrl: 'http://10.0.0.155:18080',
-  model: 'qwen3-coder:30b'
+  model: 'llama3.2:latest',
 };
 
 export class OpenCodeClient {
-  private config: OpenCodeConfig;
-
-  constructor(config: Partial<OpenCodeConfig> = {}) {
-    this.config = { ...defaultConfig, ...config };
-  }
-
   /**
    * Stream a response token-by-token via Ollama /api/chat.
-   * Conversation history is forwarded so the model has full context.
+   * Routes to the local server or Ollama Cloud based on the model name.
    */
   async sendMessageStream(
     message: string,
@@ -61,16 +136,17 @@ export class OpenCodeClient {
     signal?: AbortSignal
   ): Promise<void> {
     const messages = [...history, { role: 'user' as const, content: message }];
+    const { url, headers } = resolveEndpoint(model);
 
-    const response = await fetch(`${this.config.ollamaUrl}/api/chat`, {
+    const response = await fetch(`${url}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ model, messages, stream: true }),
       signal: signal ?? AbortSignal.timeout(120_000)
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama responded ${response.status} ${response.statusText}`);
+      throw new Error(`${isCloudModel(model) ? 'Ollama Cloud' : 'Ollama'} responded ${response.status} ${response.statusText}`);
     }
 
     const reader = response.body!.getReader();
@@ -96,8 +172,9 @@ export class OpenCodeClient {
 
   async getServerStatus(): Promise<ServerStatus> {
     const start = performance.now();
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
     try {
-      const response = await fetch(`${this.config.ollamaUrl}/api/tags`, {
+      const response = await fetch(`${base}/api/tags`, {
         signal: AbortSignal.timeout(5000)
       });
       const latencyMs = Math.round(performance.now() - start);
@@ -123,8 +200,9 @@ export class OpenCodeClient {
   }
 
   async getAvailableModels(): Promise<string[]> {
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
     try {
-      const response = await fetch(`${this.config.ollamaUrl}/api/tags`, {
+      const response = await fetch(`${base}/api/tags`, {
         signal: AbortSignal.timeout(5000)
       });
       if (!response.ok) return [];
@@ -136,8 +214,9 @@ export class OpenCodeClient {
   }
 
   async getModelDetails(): Promise<ModelInfo[]> {
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
     try {
-      const response = await fetch(`${this.config.ollamaUrl}/api/tags`, {
+      const response = await fetch(`${base}/api/tags`, {
         signal: AbortSignal.timeout(5000)
       });
       if (!response.ok) return [];
@@ -156,8 +235,9 @@ export class OpenCodeClient {
   }
 
   async getRunningModels(): Promise<RunningModel[]> {
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
     try {
-      const response = await fetch(`${this.config.ollamaUrl}/api/ps`, {
+      const response = await fetch(`${base}/api/ps`, {
         signal: AbortSignal.timeout(5000)
       });
       if (!response.ok) return [];
@@ -170,5 +250,38 @@ export class OpenCodeClient {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Load a local model into memory (start it).
+   * Uses /api/generate with an empty prompt and keep_alive:-1 (stay resident).
+   * No-op for cloud models, which are stateless/hosted.
+   */
+  async loadModel(model: string): Promise<void> {
+    if (isCloudModel(model)) return;
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, keep_alive: -1 }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok) throw new Error(`Failed to load ${model}: ${res.status} ${res.statusText}`);
+  }
+
+  /**
+   * Unload a local model from memory (stop it).
+   * Uses /api/generate with keep_alive:0 (evict immediately).
+   */
+  async unloadModel(model: string): Promise<void> {
+    if (isCloudModel(model)) return;
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, keep_alive: 0 }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`Failed to stop ${model}: ${res.status} ${res.statusText}`);
   }
 }

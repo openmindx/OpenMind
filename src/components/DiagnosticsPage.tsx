@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ServerStatus, defaultConfig } from '../lib/opencode-client';
+import { ServerStatus, isCloudModel } from '../lib/opencode-client';
 import type { ModelInfo, RunningModel } from '../lib/opencode-client';
 
 interface EndpointResult {
@@ -32,13 +32,15 @@ interface DiagnosticsPageProps {
   sysStats: SystemStats | null;
   modelDetails?: ModelInfo[];
   runningModels?: RunningModel[];
+  localUrl: string;
+  busyModel?: string | null;
+  onLoadModel?: (model: string) => void;
+  onUnloadModel?: (model: string) => void;
 }
 
 // ─── Persist log across tab switches ────────────────────────────────────────
 // Module-level so it survives component unmount/remount
 let _persistedLog: LogEntry[] = [];
-
-const SERVER_URL = defaultConfig.ollamaUrl;
 
 const ENDPOINTS = [
   { path: '/api/tags',    method: 'GET',  label: 'Model list' },
@@ -337,7 +339,8 @@ function ShellScriptsCard({ addLog }: { addLog: (msg: string, kind: LogEntry['ki
   );
 }
 
-export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer, sysStats, modelDetails = [], runningModels = [] }: DiagnosticsPageProps) {
+export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckServer, sysStats, modelDetails = [], runningModels = [], localUrl, busyModel = null, onLoadModel, onUnloadModel }: DiagnosticsPageProps) {
+  const SERVER_URL = localUrl.replace(/\/+$/, '');
   const [endpointResults, setEndpointResults] = useState<Record<string, EndpointResult>>({});
   const [endpointTesting, setEndpointTesting] = useState(false);
   const [chatTestResult, setChatTestResult] = useState<{ ok: boolean; latencyMs: number | null; detail: string } | null>(null);
@@ -629,6 +632,8 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
                 const active = m === selectedModel;
                 const detail = detailMap.get(m);
                 const running = runningMap.get(m);
+                const cloud = isCloudModel(m);
+                const busy = busyModel === m;
                 return (
                   <div key={m} style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -638,10 +643,13 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
                     borderRadius: '4px',
                     fontSize: '0.83rem',
                   }}>
-                    <span style={{ color: active ? '#4fa3e0' : running ? '#4caf50' : '#444' }}>
-                      {active ? '▶' : running ? '●' : '○'}
+                    <span style={{ color: active ? '#4fa3e0' : running ? '#4caf50' : cloud ? '#9fb8d0' : '#444' }}>
+                      {cloud ? '☁' : active ? '▶' : running ? '●' : '○'}
                     </span>
                     <code style={{ color: active ? '#7eb8f7' : '#999', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m}</code>
+                    {cloud && (
+                      <span style={{ fontSize: '0.68rem', color: '#9fb8d0', background: '#10203a', border: '1px solid #1d3350', borderRadius: '3px', padding: '1px 5px', flexShrink: 0 }}>cloud</span>
+                    )}
                     {detail?.parameterSize && (
                       <span style={{ fontSize: '0.7rem', color: '#555', fontFamily: 'monospace', flexShrink: 0 }}>{detail.parameterSize}</span>
                     )}
@@ -656,8 +664,26 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
                         VRAM {fmtSize(running.sizeVram)}
                       </span>
                     )}
-                    {active && !running && (
-                      <span style={{ fontSize: '0.72rem', color: '#4caf50', flexShrink: 0 }}>active</span>
+                    {/* Start/stop — local models only */}
+                    {!cloud && (onLoadModel || onUnloadModel) && (
+                      <button
+                        onClick={() => (running ? onUnloadModel?.(m) : onLoadModel?.(m))}
+                        disabled={busy}
+                        title={running ? `Stop ${m}` : `Start ${m}`}
+                        style={{
+                          flexShrink: 0,
+                          padding: '0.15rem 0.6rem',
+                          background: running ? '#2a1515' : '#152a15',
+                          color: busy ? '#888' : running ? '#ff8a80' : '#7fd07f',
+                          border: `1px solid ${running ? '#4a2a2a' : '#2a4a2a'}`,
+                          borderRadius: '3px',
+                          cursor: busy ? 'default' : 'pointer',
+                          fontSize: '0.72rem',
+                          minWidth: '3.2rem',
+                        }}
+                      >
+                        {busy ? '…' : running ? '■ Stop' : '▶ Start'}
+                      </button>
                     )}
                   </div>
                 );

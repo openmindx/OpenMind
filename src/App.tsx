@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
-import { OpenCodeClient, Message, ServerStatus, defaultConfig } from "./lib/opencode-client";
-import type { ModelInfo, RunningModel } from "./lib/opencode-client";
+import { OpenCodeClient, Message, ServerStatus, defaultConfig, getSettings, updateSettings, isCloudModel, CLOUD_MODELS } from "./lib/opencode-client";
+import type { ModelInfo, RunningModel, AppSettings } from "./lib/opencode-client";
 import { MarkdownMessage } from "./components/MarkdownMessage";
 import { DiagnosticsPage } from "./components/DiagnosticsPage";
 import { ModelPicker } from "./components/ModelPicker";
+import { SettingsPage } from "./components/SettingsPage";
 import { FloatingChat } from "./components/FloatingChat";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { NavBar } from "./components/NavBar";
@@ -40,12 +41,19 @@ function App() {
   const [selectedModel, setSelectedModel] = useState(
     () => localStorage.getItem(MODEL_KEY) ?? defaultConfig.model
   );
+  const [settings, setSettings] = useState<AppSettings>(() => getSettings());
+  const [busyModel, setBusyModel] = useState<string | null>(null);
   const [sysStats, setSysStats] = useState<SystemStats | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const historyLoaded = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const connected = serverStatus?.online ?? false;
+  const cloudModels = settings.cloudEnabled && settings.cloudApiKey.trim() ? CLOUD_MODELS : [];
+  const displayModels = [...models, ...cloudModels];
+  const selectedIsCloud = isCloudModel(selectedModel);
+  // Cloud models can be used even when the local server is offline.
+  const canInteract = connected || (selectedIsCloud && !!settings.cloudApiKey.trim());
 
   // Load persisted history on first mount
   useEffect(() => {
@@ -74,7 +82,7 @@ function App() {
       client.getAvailableModels().then(fetched => {
         setModels(fetched);
         setSelectedModel(prev =>
-          fetched.length > 0 && !fetched.includes(prev) ? fetched[0] : prev
+          fetched.length > 0 && !fetched.includes(prev) && !isCloudModel(prev) ? fetched[0] : prev
         );
       });
       client.getModelDetails().then(setModelDetails);
@@ -86,6 +94,34 @@ function App() {
     checkServer();
     const id = setInterval(checkServer, POLL_INTERVAL_MS);
     return () => clearInterval(id);
+  }, [checkServer]);
+
+  const handleSaveSettings = useCallback((patch: Partial<AppSettings>) => {
+    const next = updateSettings(patch);
+    setSettings(next);
+    checkServer(); // re-probe with the new endpoint immediately
+  }, [checkServer]);
+
+  const handleLoadModel = useCallback(async (model: string) => {
+    setBusyModel(model);
+    try {
+      await client.loadModel(model);
+    } catch (err) {
+      console.error('load model failed:', err);
+    }
+    await checkServer();
+    setBusyModel(null);
+  }, [checkServer]);
+
+  const handleUnloadModel = useCallback(async (model: string) => {
+    setBusyModel(model);
+    try {
+      await client.unloadModel(model);
+    } catch (err) {
+      console.error('unload model failed:', err);
+    }
+    await checkServer();
+    setBusyModel(null);
   }, [checkServer]);
 
   useEffect(() => {
@@ -128,7 +164,7 @@ function App() {
   }
 
   async function sendMessage() {
-    if (!input.trim() || loading || !connected) return;
+    if (!input.trim() || loading || !canInteract) return;
 
     const trimmedInput = input;
     const userMessage: Message = { role: "user", content: trimmedInput };
@@ -204,18 +240,22 @@ function App() {
           latencyMs={serverStatus?.latencyMs ?? null}
           error={serverStatus?.error ?? null}
           checkedAt={serverStatus?.checkedAt ?? null}
-          serverUrl={defaultConfig.ollamaUrl}
+          serverUrl={settings.localUrl}
           onNavigate={() => setActiveTab('diagnostics')}
         />
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
           {/* Model picker accordion */}
           <ModelPicker
-            models={models}
+            models={displayModels}
             modelDetails={modelDetails}
+            runningModels={runningModels}
             selectedModel={selectedModel}
             disabled={loading}
+            busyModel={busyModel}
             onSelect={setSelectedModel}
+            onLoadModel={handleLoadModel}
+            onUnloadModel={handleUnloadModel}
             onOpenChat={(model) => {
               if (!floatingChats.includes(model)) {
                 setFloatingChats(prev => [...prev, model]);
@@ -318,16 +358,20 @@ function App() {
       )}
 
       {activeTab === 'boardroom' && (
-        <BoardroomPage models={models} connected={connected} />
+        <BoardroomPage models={displayModels} connected={connected} />
       )}
 
       {activeTab === 'dojo' && (
         <DojoPage
-          models={models}
+          models={displayModels}
           connected={connected}
           droppedModel={droppedDojoModel}
           onDropConsumed={() => setDroppedDojoModel(null)}
         />
+      )}
+
+      {activeTab === 'settings' && (
+        <SettingsPage settings={settings} onSave={handleSaveSettings} />
       )}
 
       {/* Floating chat windows */}
@@ -343,12 +387,16 @@ function App() {
       {activeTab === 'diagnostics' && (
         <DiagnosticsPage
           serverStatus={serverStatus}
-          models={models}
+          models={displayModels}
           selectedModel={selectedModel}
           onCheckServer={checkServer}
           sysStats={sysStats}
           modelDetails={modelDetails}
           runningModels={runningModels}
+          localUrl={settings.localUrl}
+          busyModel={busyModel}
+          onLoadModel={handleLoadModel}
+          onUnloadModel={handleUnloadModel}
         />
       )}
 
@@ -370,8 +418,8 @@ function App() {
               </code>
             </p>
             <p style={{ fontSize: '0.85rem', marginTop: '1.5rem' }}>
-              {connected
-                ? 'Type a message below to start a conversation.'
+              {canInteract
+                ? `Type a message below to start a conversation.${selectedIsCloud ? ' (cloud model)' : ''}`
                 : 'Waiting for Ollama server…'}
             </p>
           </div>
@@ -433,7 +481,7 @@ function App() {
                 sendMessage();
               }
             }}
-            placeholder={connected ? "Type your message… (Shift+Enter for new line)" : "Ollama offline — connect to send"}
+            placeholder={canInteract ? "Type your message… (Shift+Enter for new line)" : "Ollama offline — connect or pick a cloud model"}
             disabled={loading}
             autoFocus
             rows={1}
@@ -441,7 +489,7 @@ function App() {
               flex: 1,
               padding: '0.7rem 0.85rem',
               background: '#1a1a1a',
-              border: `1px solid ${connected ? '#3a3a3a' : '#5a3a3a'}`,
+              border: `1px solid ${canInteract ? '#3a3a3a' : '#5a3a3a'}`,
               borderRadius: '4px',
               color: '#e0e0e0',
               fontSize: '0.95rem',
@@ -479,14 +527,14 @@ function App() {
           ) : (
             <button
               onClick={sendMessage}
-              disabled={!connected || !input.trim()}
+              disabled={!canInteract || !input.trim()}
               style={{
                 padding: '0.7rem 1.25rem',
-                background: connected && input.trim() ? '#007bff' : '#333',
-                color: connected && input.trim() ? 'white' : '#555',
+                background: canInteract && input.trim() ? '#007bff' : '#333',
+                color: canInteract && input.trim() ? 'white' : '#555',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: connected && input.trim() ? 'pointer' : 'not-allowed',
+                cursor: canInteract && input.trim() ? 'pointer' : 'not-allowed',
                 fontWeight: '500',
                 fontSize: '0.9rem',
                 whiteSpace: 'nowrap'

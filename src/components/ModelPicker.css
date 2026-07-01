@@ -214,3 +214,52 @@
   color: #f9a825;
   background: #1a1500;
 }
+
+/* Start/stop button */
+.model-picker__run-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.model-picker__run-btn:hover:not(:disabled) {
+  border-color: #3a3a3a;
+  background: #161616;
+}
+
+.model-picker__run-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Status badges */
+.model-picker__badge {
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.model-picker__badge--cloud {
+  color: #9fb8d0;
+  background: #10203a;
+  border: 1px solid #1d3350;
+}
+
+.model-picker__badge--running {
+  color: #4caf50;
+  background: #0d1a0d;
+  border: 1px solid #1a3a1a;
+}
