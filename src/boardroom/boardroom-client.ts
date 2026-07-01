@@ -1,5 +1,6 @@
 import type { AgentConfig, AgentResponse } from './boardroom-types';
 import { ROLES } from './boardroom-types';
+import { resolveEndpoint } from '../lib/opencode-client';
 
 // Re-export type so consumers don't need to import from two places
 export type { AgentConfig, AgentResponse };
@@ -15,15 +16,15 @@ export type { AgentConfig, AgentResponse };
 export async function streamAgentResponse(
   agent: AgentConfig,
   prompt: string,
-  ollamaUrl: string,
   onToken: (token: string) => void,
   signal: AbortSignal,
 ): Promise<number> {
   const systemPrompt = agent.customPrompt ?? ROLES[agent.role].systemPrompt;
+  const { url, headers } = resolveEndpoint(agent.model);
 
-  const res = await fetch(`${ollamaUrl}/api/chat`, {
+  const res = await fetch(`${url}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     signal,
     body: JSON.stringify({
       model: agent.model,
@@ -86,7 +87,6 @@ export async function streamConsensus(
   prompt: string,
   responses: AgentResponse[],
   synthesizerModel: string,
-  ollamaUrl: string,
   onToken: (token: string) => void,
   signal: AbortSignal,
 ): Promise<number> {
@@ -119,9 +119,10 @@ A clear, actionable recommendation that weighs all perspectives.
 
 Be concise. Each section should be 2–5 sentences or a short bullet list.`;
 
-  const res = await fetch(`${ollamaUrl}/api/chat`, {
+  const { url, headers } = resolveEndpoint(synthesizerModel);
+  const res = await fetch(`${url}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     signal,
     body: JSON.stringify({
       model: synthesizerModel,

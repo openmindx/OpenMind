@@ -4,23 +4,25 @@
  */
 
 import { ModelResponse, ModelScore, DojoRubric, BLIND_LABELS } from './dojo-types';
+import { resolveEndpoint } from '../lib/opencode-client';
 
 /**
  * Stream a single model response token-by-token via Ollama /api/chat.
+ * Routes to local Ollama or Ollama Cloud based on the model name.
  * Returns total latency in ms when complete.
  */
 export async function streamModelResponse(
   model: string,
   prompt: string,
-  ollamaUrl: string,
   onToken: (token: string) => void,
   signal: AbortSignal,
 ): Promise<number> {
   const start = performance.now();
+  const { url, headers } = resolveEndpoint(model);
 
-  const res = await fetch(`${ollamaUrl}/api/chat`, {
+  const res = await fetch(`${url}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       model,
       messages: [{ role: 'user', content: prompt }],
@@ -68,7 +70,6 @@ export async function runJudge(
   judgeModel: string,
   rubric: DojoRubric,
   blindMode: boolean,
-  ollamaUrl: string,
 ): Promise<ModelScore[]> {
   // Build label <-> model maps
   const labelToModel: Record<string, string> = {};
@@ -121,9 +122,10 @@ INSTRUCTIONS:
   ...
 ]`;
 
-  const res = await fetch(`${ollamaUrl}/api/chat`, {
+  const { url, headers } = resolveEndpoint(judgeModel);
+  const res = await fetch(`${url}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       model: judgeModel,
       messages: [{ role: 'user', content: judgePrompt }],

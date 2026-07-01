@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { defaultConfig } from '../lib/opencode-client';
 
 const SCOREBOARD_KEY = 'openmind-dojo-scoreboard';
 
@@ -113,7 +112,6 @@ export function DojoPage({ models, connected, droppedModel, onDropConsumed }: Do
           const latencyMs = await streamModelResponse(
             model,
             prompt,
-            defaultConfig.ollamaUrl,
             (token) => {
               accRef.current[model] += token;
               setResponses(prev => ({
@@ -169,7 +167,6 @@ export function DojoPage({ models, connected, droppedModel, onDropConsumed }: Do
           judgeModel,
           rubricSnapshot,
           blindMode,
-          defaultConfig.ollamaUrl,
         );
 
         setScores(judgeScores);

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**OpenMind** is a Tauri 2 desktop application providing an AI chat interface. It connects a React 19 frontend to local AI models served by Ollama at `http://10.0.0.155:18080`.
+**OpenMind** is a Tauri 2 desktop application providing an AI chat interface. It connects a React 19 frontend to AI models served by a local Ollama server (default `http://localhost:11434`) and, optionally, to Ollama Cloud (`https://ollama.com`) for hosted models such as `gpt-oss`. The endpoint and cloud API key are configurable at runtime via the **Settings** tab (persisted to `localStorage`).
 
 ## Commands
 
@@ -67,4 +67,4 @@ Rust commands exposed via `invoke()` from `@tauri-apps/api/core`:
 - Tauri `productName`: `openmind`, window title: `OpenMind`
 - Tauri app identifier: `boardroom.pythai.net`
 - TypeScript: strict mode, ES2020 target
-- Ollama server: `http://10.0.0.155:18080` (configured in `defaultConfig` in `opencode-client.ts`)
+- Ollama server: default `http://localhost:11434` (in `defaultSettings` in `opencode-client.ts`; overridable in the Settings tab). Model routing (local vs. Ollama Cloud) is centralized in `resolveEndpoint()`.

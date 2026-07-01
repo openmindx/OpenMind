@@ -7,8 +7,6 @@ import { ConsensusPanel } from './components/ConsensusPanel';
 import { BoardroomInput } from './components/BoardroomInput';
 import './BoardroomPage.css';
 
-const OLLAMA_URL = 'http://10.0.0.155:18080';
-
 interface BoardroomPageProps {
   models: string[];
   connected: boolean;
@@ -98,7 +96,6 @@ export function BoardroomPage({ models, connected }: BoardroomPageProps) {
           const latencyMs = await streamAgentResponse(
             agent,
             prompt,
-            OLLAMA_URL,
             (token) => {
               accRef.current[agent.id] += token;
               setResponses(prev => ({
@@ -180,7 +177,6 @@ export function BoardroomPage({ models, connected }: BoardroomPageProps) {
         prompt,
         finalResponses,
         synthesizerModel,
-        OLLAMA_URL,
         (token) => {
           synthAccRef.current += token;
           setConsensus(prev => prev

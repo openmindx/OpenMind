@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ModelInfo } from '../lib/opencode-client';
+import type { ModelInfo, RunningModel } from '../lib/opencode-client';
+import { isCloudModel } from '../lib/opencode-client';
 import './ModelPicker.css';
 
 function fmtSize(bytes: number): string {
@@ -11,21 +12,30 @@ function fmtSize(bytes: number): string {
 interface ModelPickerProps {
   models: string[];
   modelDetails?: ModelInfo[];
+  runningModels?: RunningModel[];
   selectedModel: string;
   disabled?: boolean;
+  busyModel?: string | null;
   onSelect: (model: string) => void;
   onOpenChat: (model: string) => void;
+  onLoadModel?: (model: string) => void;
+  onUnloadModel?: (model: string) => void;
 }
 
 export function ModelPicker({
   models,
   modelDetails = [],
+  runningModels = [],
   selectedModel,
   disabled = false,
+  busyModel = null,
   onSelect,
   onOpenChat,
+  onLoadModel,
+  onUnloadModel,
 }: ModelPickerProps) {
   const detailMap = new Map(modelDetails.map(d => [d.name, d]));
+  const runningSet = new Set(runningModels.map(r => r.name));
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +60,12 @@ export function ModelPicker({
     e.stopPropagation();
     onOpenChat(model);
     setOpen(false);
+  }
+
+  function handleToggleRun(e: React.MouseEvent, model: string) {
+    e.stopPropagation();
+    if (runningSet.has(model)) onUnloadModel?.(model);
+    else onLoadModel?.(model);
   }
 
   function handleDragStart(e: React.DragEvent, model: string) {
@@ -85,7 +101,11 @@ export function ModelPicker({
           {models.length === 0 ? (
             <div className="model-picker__empty">No models available</div>
           ) : (
-            models.map(model => (
+            models.map(model => {
+              const cloud = isCloudModel(model);
+              const running = runningSet.has(model);
+              const busy = busyModel === model;
+              return (
               <div
                 key={model}
                 className={`model-picker__row${model === selectedModel ? ' model-picker__row--active' : ''}`}
@@ -103,12 +123,30 @@ export function ModelPicker({
                   {model === selectedModel && (
                     <span className="model-picker__active-dot" aria-label="active" />
                   )}
-                  {detailMap.get(model) && (
+                  {cloud ? (
+                    <span className="model-picker__badge model-picker__badge--cloud">cloud</span>
+                  ) : running ? (
+                    <span className="model-picker__badge model-picker__badge--running">running</span>
+                  ) : null}
+                  {!cloud && detailMap.get(model) && (
                     <span className="model-picker__size">
                       {fmtSize(detailMap.get(model)!.size)}
                     </span>
                   )}
                 </button>
+
+                {/* Start/stop — local models only */}
+                {!cloud && (onLoadModel || onUnloadModel) && (
+                  <button
+                    className="model-picker__run-btn"
+                    onClick={e => handleToggleRun(e, model)}
+                    disabled={busy}
+                    title={running ? `Stop ${model}` : `Start ${model}`}
+                    style={{ color: running ? '#ff8a80' : '#4caf50' }}
+                  >
+                    {busy ? '…' : running ? '■' : '▶'}
+                  </button>
+                )}
 
                 <button
                   className="model-picker__chat-btn"
@@ -118,7 +156,8 @@ export function ModelPicker({
                   ⚡
                 </button>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
