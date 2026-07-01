@@ -6,7 +6,8 @@ Items are grouped by area. Check off as completed.
 
 ## Configuration & Settings
 
-- [ ] Settings panel / modal — edit Ollama URL and port without touching source
+- [x] Settings panel / tab — edit local Ollama URL without touching source (persisted to `localStorage`)
+- [x] Ollama Cloud support — `gpt-oss` models via `ollama.com` + API key, routed by `resolveEndpoint()`
 - [x] Persist selected model to `localStorage` so it survives restarts
 - [ ] Per-conversation model override (different model per chat session)
 - [ ] Configurable system prompt (global default + per-conversation override)
@@ -47,8 +48,9 @@ Items are grouped by area. Check off as completed.
 - [ ] In-app model browser — list models available on Ollama with size and family info
 - [ ] Pull new model from registry directly from the UI (`POST /api/pull` with streaming progress)
 - [ ] Delete model from UI (`DELETE /api/delete`)
-- [ ] Show which model is currently loaded in GPU memory (`/api/ps`)
-- [ ] Unload / eject a running model from VRAM (`POST /api/generate` with `keep_alive: 0`)
+- [x] Show which model is currently loaded in GPU memory (`/api/ps`) — running/VRAM badges
+- [x] Start a model (load into memory, `POST /api/generate` with `keep_alive: -1`)
+- [x] Unload / eject a running model from VRAM (`POST /api/generate` with `keep_alive: 0`)
 - [ ] Modelfile viewer (show system prompt and parameters for a model)
 
 ---

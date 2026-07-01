@@ -1,6 +1,13 @@
 import { useState } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import type { AppSettings } from '../lib/opencode-client';
 import { CLOUD_MODELS } from '../lib/opencode-client';
+
+const OLLAMA_KEYS_URL = 'https://ollama.com/settings/keys';
+
+function openOllamaKeys() {
+  openUrl(OLLAMA_KEYS_URL).catch(err => console.error('open url failed:', err));
+}
 
 interface SettingsPageProps {
   settings: AppSettings;
@@ -229,7 +236,14 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={openOllamaKeys}
+              style={{ ...btnBase, background: '#1a3a5a', color: '#9fc8f0', border: '1px solid #2a5a8a' }}
+              title="Opens ollama.com in your browser to sign in and create an API key"
+            >
+              Sign in to Ollama ↗
+            </button>
             <button
               onClick={testCloud}
               disabled={testing !== null}
@@ -250,8 +264,15 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
               ))}
             </div>
             <div style={{ marginTop: '0.5rem', color: '#555' }}>
-              Get a key at <code style={{ color: '#777' }}>ollama.com</code> → Settings → API Keys.
-              The key is stored locally in this app only.
+              Free tier ($0) works — you just need to{' '}
+              <a
+                onClick={(e) => { e.preventDefault(); openOllamaKeys(); }}
+                href={OLLAMA_KEYS_URL}
+                style={{ color: '#7eb8f7', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                sign in at ollama.com and create an API key
+              </a>
+              . The key is stored locally in this app only.
             </div>
           </div>
         </div>
