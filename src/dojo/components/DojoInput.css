@@ -18,7 +18,7 @@
 .dojo-input__config-btn {
   background: transparent;
   border: none;
-  color: #555;
+  color: #9a9a9a;
   font-size: 0.7rem;
   cursor: pointer;
   padding: 0;
@@ -65,7 +65,7 @@
 .dojo-input__section-label {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #484848;
+  color: #b0b0b0;
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
@@ -86,7 +86,7 @@
   border: 1px solid #252525;
   border-radius: 4px;
   font-size: 0.72rem;
-  color: #666;
+  color: #b0b0b0;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -122,12 +122,57 @@
 .dojo-input__select {
   padding: 0.28rem 0.5rem;
   background: #141414;
-  color: #bbb;
+  color: #dcdcdc;
   border: 1px solid #252525;
   border-radius: 4px;
   font-size: 0.78rem;
   cursor: pointer;
   min-width: 140px;
+}
+
+/* Judge = the black belt / sensei — distinct gold-on-black styling */
+.dojo-input__select--judge {
+  background: #0f0f0f;
+  color: #f4f4f4;
+  border: 1px solid #6b5417;
+  border-left: 4px solid #d4af37;   /* gold */
+  font-weight: 600;
+}
+
+.dojo-input__select--judge:focus {
+  outline: none;
+  border-color: #d4af37;
+}
+
+.dojo-input__belt-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 7px;
+  background: #1a1a1a;
+  border: 1px solid #d4af37;   /* black belt with gold tip */
+  border-radius: 1px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.dojo-input__judge-rank {
+  color: #d4af37;
+  font-weight: 700;
+}
+
+.dojo-input__judge-active {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  color: #f0f0f0;
+  background: #111;
+  border: 1px solid #333;
+  border-left: 3px solid #d4af37;
+  border-radius: 3px;
+  padding: 2px 6px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Checkboxes */
@@ -142,7 +187,7 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.76rem;
-  color: #777;
+  color: #bcbcbc;
   cursor: pointer;
   user-select: none;
 }
@@ -154,7 +199,7 @@
 
 .dojo-input__empty-hint {
   font-size: 0.75rem;
-  color: #3a3a3a;
+  color: #8a8a8a;
   font-style: italic;
 }
 
@@ -168,7 +213,7 @@
 .dojo-input__preset-select {
   padding: 0.25rem 0.4rem;
   background: #141414;
-  color: #888;
+  color: #c0c0c0;
   border: 1px solid #252525;
   border-radius: 4px;
   font-size: 0.73rem;
@@ -236,13 +281,13 @@
 
 .dojo-input__btn--off {
   background: #1e1e1e;
-  color: #3a3a3a;
+  color: #6a6a6a;
   cursor: not-allowed;
 }
 
 /* Hint */
 .dojo-input__hint {
   font-size: 0.68rem;
-  color: #3a3a3a;
+  color: #9a9a9a;
   padding: 0 0.1rem;
 }

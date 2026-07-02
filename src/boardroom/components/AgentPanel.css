@@ -33,7 +33,7 @@
 
 .agent-panel__model {
   font-size: 0.75rem;
-  color: #888;
+  color: #c4c4c4;
   font-family: monospace;
   flex: 1;
   overflow: hidden;
@@ -65,7 +65,7 @@
 
 .agent-panel__latency {
   font-size: 0.7rem;
-  color: #555;
+  color: #9a9a9a;
   font-family: monospace;
 }
 
@@ -93,7 +93,7 @@
 }
 
 .agent-panel__placeholder {
-  color: #333;
+  color: #8a8a8a;
   font-style: italic;
 }
 

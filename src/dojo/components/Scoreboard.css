@@ -22,7 +22,7 @@
 
 .scoreboard__rounds {
   font-weight: 400;
-  color: #3a3a3a;
+  color: #b0b0b0;
 }
 
 .scoreboard__table {
@@ -35,7 +35,7 @@
   text-align: left;
   font-size: 0.65rem;
   font-weight: 600;
-  color: #444;
+  color: #c4c4c4;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid #1e1e1e;
@@ -52,10 +52,19 @@
   white-space: nowrap;
 }
 
-.sb-td--rank   { color: #3a3a3a; }
+.sb-td--rank   { color: #d0d0d0; white-space: nowrap; }
+.sb-belt {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
 .sb-td--model  { font-family: monospace; font-size: 0.73rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .sb-td--wins   { color: #4caf50; font-weight: 700; }
-.sb-td--rounds { color: #555; }
+.sb-td--rounds { color: #9a9a9a; }
 .sb-td--avg    { color: #7eb8f7; font-variant-numeric: tabular-nums; }
 
 .sb-row--top .sb-td {

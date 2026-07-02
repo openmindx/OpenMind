@@ -51,6 +51,32 @@ export interface ScoreboardEntry {
 
 export const BLIND_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const;
 
+// Martial-arts belt ranks — used to color Dojo contestants and scoreboard ranks.
+export interface Belt {
+  name: string;
+  color: string;  // belt background
+  text: string;   // readable text on that belt
+}
+
+export const BELTS: Belt[] = [
+  { name: 'White',  color: '#eaeaea', text: '#111111' },
+  { name: 'Yellow', color: '#ffd600', text: '#111111' },
+  { name: 'Orange', color: '#ff9100', text: '#111111' },
+  { name: 'Green',  color: '#4caf50', text: '#08240f' },
+  { name: 'Blue',   color: '#2196f3', text: '#ffffff' },
+  { name: 'Purple', color: '#9c27b0', text: '#ffffff' },
+  { name: 'Brown',  color: '#795548', text: '#ffffff' },
+  { name: 'Red',    color: '#f44336', text: '#ffffff' },
+  { name: 'Black',  color: '#1a1a1a', text: '#ffffff' },
+];
+
+/** Belt by contestant order (white → up). Wraps if there are more than 9. */
+export const beltFor = (i: number): Belt => BELTS[i % BELTS.length];
+
+/** Belt by finishing rank (0 = 1st place = black belt, descending). */
+export const beltForRank = (rankIndex: number): Belt =>
+  BELTS[Math.max(0, BELTS.length - 1 - rankIndex)];
+
 export const PROMPT_PRESETS: Array<{ label: string; prompt: string }> = [
   {
     label: 'Code challenge',

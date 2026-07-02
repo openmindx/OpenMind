@@ -5,6 +5,9 @@ import './FloatingChat.css';
 
 const client = new OllamaClient();
 
+// Rising z-index so the most-recently-interacted-with window comes to the front.
+let topZ = 1000;
+
 interface FloatingChatProps {
   model: string;
   index: number;       // stacking offset
@@ -21,6 +24,10 @@ export function FloatingChat({ model, index, onClose }: FloatingChatProps) {
   // Draggable position
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  // Stacking: raise this window above the others whenever it's interacted with.
+  const [z, setZ] = useState(() => ++topZ);
+  const raise = useCallback(() => setZ(++topZ), []);
 
   function onHeaderMouseDown(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -109,10 +116,13 @@ export function FloatingChat({ model, index, onClose }: FloatingChatProps) {
   return (
     <div
       className="floating-chat"
+      onMouseDownCapture={raise}
+      onFocusCapture={raise}
       style={{
         right: `${baseRight - pos.x}px`,
         bottom: `${16 - pos.y}px`,
         width: `${CHAT_WIDTH}px`,
+        zIndex: z,
       }}
     >
       {/* Header — drag handle */}

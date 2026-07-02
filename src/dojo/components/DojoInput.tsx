@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DojoRubric, PROMPT_PRESETS } from '../dojo-types';
+import { DojoRubric, PROMPT_PRESETS, beltFor } from '../dojo-types';
 import './DojoInput.css';
 
 interface DojoInputProps {
@@ -100,11 +100,13 @@ export function DojoInput({
               ) : (
                 availableModels.map(m => {
                   const selected = selectedModels.includes(m);
+                  const belt = selected ? beltFor(selectedModels.indexOf(m)) : null;
                   return (
                     <label
                       key={m}
                       className={`dojo-chip${selected ? ' dojo-chip--on' : ''}`}
-                      title={m}
+                      title={belt ? `${m} — ${belt.name} belt` : m}
+                      style={belt ? { background: belt.color, color: belt.text, borderColor: belt.color } : undefined}
                     >
                       <input
                         type="checkbox"
@@ -122,20 +124,28 @@ export function DojoInput({
 
           {/* Judge + options + rubric */}
           <div className="dojo-input__row">
-            {/* Judge model */}
+            {/* Judge model — the "black belt" / sensei */}
             <div className="dojo-input__col">
-              <div className="dojo-input__section-label">Judge model</div>
+              <div className="dojo-input__section-label">
+                <span className="dojo-input__belt-swatch" aria-hidden />
+                Judge <span className="dojo-input__judge-rank">· black belt</span>
+              </div>
               <select
                 value={judgeModel}
                 onChange={e => onJudgeModelChange(e.target.value)}
                 disabled={disabled}
-                className="dojo-input__select"
+                className="dojo-input__select dojo-input__select--judge"
               >
-                <option value="">— select judge —</option>
+                <option value="">— choose the sensei —</option>
                 {availableModels.map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
+              {judgeModel && (
+                <div className="dojo-input__judge-active" title={judgeModel}>
+                  🥋 {judgeModel}
+                </div>
+              )}
             </div>
 
             {/* Rubric */}

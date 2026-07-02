@@ -22,6 +22,15 @@ interface SystemStats {
   cpu_percent: number;
   net_rx_bytes: number;
   net_tx_bytes: number;
+  mem_total_bytes: number;
+  mem_free_bytes: number;
+  mem_available_bytes: number;
+  cpu_temp_c: number | null;
+  cpu_temp_label: string | null;
+  disk_mount: string;
+  disk_total_bytes: number;
+  disk_used_bytes: number;
+  disk_available_bytes: number;
 }
 
 interface DiagnosticsPageProps {
@@ -580,6 +589,50 @@ export function DiagnosticsPage({ serverStatus, models, selectedModel, onCheckSe
                   }} />
                 </div>
               </div>
+
+              {/* CPU Temperature */}
+              <div>
+                <div style={metricLabelStyle}>
+                  CPU Temp{sysStats.cpu_temp_label ? ` · ${sysStats.cpu_temp_label}` : ''}
+                </div>
+                {sysStats.cpu_temp_c == null ? (
+                  <div style={{ fontSize: '0.88rem', color: '#666' }}>n/a</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 600, color: sysStats.cpu_temp_c >= 85 ? '#f44336' : sysStats.cpu_temp_c >= 70 ? '#ff9800' : '#4caf50' }}>
+                      {sysStats.cpu_temp_c.toFixed(0)}°C
+                    </div>
+                    <div style={{ marginTop: '0.3rem', height: '4px', background: '#222', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(sysStats.cpu_temp_c, 100)}%`, background: sysStats.cpu_temp_c >= 85 ? '#f44336' : sysStats.cpu_temp_c >= 70 ? '#ff9800' : '#4caf50', transition: 'width 0.4s ease', borderRadius: '2px' }} />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Memory */}
+              {(() => {
+                const usedPct = sysStats.mem_total_bytes > 0 ? Math.round(((sysStats.mem_total_bytes - sysStats.mem_available_bytes) / sysStats.mem_total_bytes) * 100) : 0;
+                return (
+                  <div>
+                    <div style={metricLabelStyle}>Memory (used)</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 600, color: usedPct > 90 ? '#f44336' : usedPct > 75 ? '#ff9800' : '#4caf50' }}>{usedPct}%</div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', fontFamily: 'monospace' }}>{fmtSize(sysStats.mem_free_bytes)} free / {fmtSize(sysStats.mem_total_bytes)}</div>
+                  </div>
+                );
+              })()}
+
+              {/* Disk (root filesystem) */}
+              {(() => {
+                const usedPct = sysStats.disk_total_bytes > 0 ? Math.round((sysStats.disk_used_bytes / sysStats.disk_total_bytes) * 100) : 0;
+                return (
+                  <div>
+                    <div style={metricLabelStyle}>Disk · {sysStats.disk_mount}</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 600, color: usedPct > 90 ? '#f44336' : usedPct > 75 ? '#ff9800' : '#4caf50' }}>{usedPct}%</div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', fontFamily: 'monospace' }}>{fmtSize(sysStats.disk_used_bytes)} used / {fmtSize(sysStats.disk_total_bytes)} · {fmtSize(sysStats.disk_available_bytes)} free</div>
+                  </div>
+                );
+              })()}
+
               <Metric
                 label="Network ↓ Receive"
                 value={fmtBytes(sysStats.net_rx_bytes / 2)}

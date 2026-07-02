@@ -1,4 +1,4 @@
-import { ScoreboardEntry } from '../dojo-types';
+import { ScoreboardEntry, beltForRank } from '../dojo-types';
 import './Scoreboard.css';
 
 interface ScoreboardProps {
@@ -38,9 +38,17 @@ export function Scoreboard({ entries, roundCount }: ScoreboardProps) {
               ? (entry.totalOverall / entry.rounds).toFixed(1)
               : '—';
             const isTop = i === 0 && entry.wins > 0;
+            const belt = beltForRank(i);
             return (
               <tr key={entry.model} className={isTop ? 'sb-row--top' : ''}>
-                <td className="sb-td sb-td--rank">{i + 1}</td>
+                <td className="sb-td sb-td--rank">
+                  <span
+                    className="sb-belt"
+                    style={{ background: belt.color }}
+                    title={`${belt.name} belt`}
+                  />
+                  {i + 1}
+                </td>
                 <td className="sb-td sb-td--model" title={entry.model}>
                   {entry.model}
                 </td>
