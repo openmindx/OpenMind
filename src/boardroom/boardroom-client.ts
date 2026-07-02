@@ -1,6 +1,6 @@
 import type { AgentConfig, AgentResponse } from './boardroom-types';
 import { ROLES } from './boardroom-types';
-import { resolveEndpoint } from '../lib/opencode-client';
+import { resolveEndpoint, describeError } from '../lib/ollama-client';
 
 // Re-export type so consumers don't need to import from two places
 export type { AgentConfig, AgentResponse };
@@ -37,7 +37,7 @@ export async function streamAgentResponse(
   });
 
   if (!res.ok) {
-    throw new Error(`Ollama error ${res.status}: ${res.statusText}`);
+    throw new Error(await describeError(res, agent.model));
   }
 
   const reader = res.body?.getReader();
@@ -134,7 +134,7 @@ Be concise. Each section should be 2–5 sentences or a short bullet list.`;
   });
 
   if (!res.ok) {
-    throw new Error(`Ollama error ${res.status}: ${res.statusText}`);
+    throw new Error(await describeError(res, synthesizerModel));
   }
 
   const reader = res.body?.getReader();

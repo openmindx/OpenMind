@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
-import { OpenCodeClient } from '../lib/opencode-client';
-import type { Message } from '../lib/opencode-client';
+import { OllamaClient } from '../lib/ollama-client';
+import type { Message } from '../lib/ollama-client';
 import './FloatingChat.css';
 
-const client = new OpenCodeClient();
+const client = new OllamaClient();
 
 interface FloatingChatProps {
   model: string;

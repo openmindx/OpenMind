@@ -40,7 +40,7 @@ The project follows standard Tauri 2 architecture:
 ### Frontend (`src/`)
 
 - **`App.tsx`** — Root component. Manages: streaming chat, model selector, localStorage history, 15 s server polling, diagnostic banner, clear button.
-- **`lib/opencode-client.ts`** — All Ollama HTTP calls:
+- **`lib/ollama-client.ts`** — All Ollama HTTP calls:
   - `sendMessageStream()` — streams tokens via `POST /api/chat` with full conversation history; uses `ReadableStream`
   - `getServerStatus()` — health probe with 5 s timeout, returns latency + error detail
   - `getAvailableModels()` — fetches model list from `GET /api/tags`
@@ -67,4 +67,4 @@ Rust commands exposed via `invoke()` from `@tauri-apps/api/core`:
 - Tauri `productName`: `openmind`, window title: `OpenMind`
 - Tauri app identifier: `boardroom.pythai.net`
 - TypeScript: strict mode, ES2020 target
-- Ollama server: default `http://localhost:11434` (in `defaultSettings` in `opencode-client.ts`; overridable in the Settings tab). Model routing (local vs. Ollama Cloud) is centralized in `resolveEndpoint()`.
+- Ollama server: default `http://localhost:11434` (in `defaultSettings` in `ollama-client.ts`; overridable in the Settings tab). Model routing (local vs. Ollama Cloud) is centralized in `resolveEndpoint()`.

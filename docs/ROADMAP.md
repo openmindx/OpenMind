@@ -177,7 +177,7 @@ Full implementation of `flexlayout-react` (already installed) replacing the curr
 - [ ] Error boundary around MarkdownMessage to prevent render crash on malformed content
 - [ ] Retry with backoff when Ollama returns 5xx during streaming
 - [ ] Graceful handling of model not found (404 from `/api/chat`)
-- [ ] Unit tests for `opencode-client.ts` (mock fetch)
+- [ ] Unit tests for `ollama-client.ts` (mock fetch)
 - [ ] E2E smoke test that actually streams a response (extend `test-opencode-ollama.sh`)
 - [ ] TypeScript strict null checks audit (currently strict mode enabled — verify no suppressions)
 - [ ] CSP headers in Tauri config for production build

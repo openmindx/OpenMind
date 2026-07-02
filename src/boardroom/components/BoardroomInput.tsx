@@ -3,6 +3,14 @@ import type { AgentConfig, AgentRole } from '../boardroom-types';
 import { ALL_ROLES, ROLES, PRESET_BOARDS, PROMPT_PRESETS } from '../boardroom-types';
 import './BoardroomInput.css';
 
+// Per-preset interaction colors are keyed off these slugs (see BoardroomInput.css).
+const PRESET_SLUGS: Record<string, string> = {
+  'Classic Triad': 'triad',   // online green
+  "Devil's Court": 'devils',  // red
+  'Full Board': 'full',       // Bitcoin orange
+  'Peer Review': 'peer',
+};
+
 interface BoardroomInputProps {
   agents: AgentConfig[];
   models: string[];
@@ -122,7 +130,7 @@ export function BoardroomInput({
         {PRESET_BOARDS.map(pb => (
           <button
             key={pb.label}
-            className="br-input__preset-board-btn"
+            className={`br-input__preset-board-btn br-input__preset-board-btn--${PRESET_SLUGS[pb.label] ?? 'default'}`}
             onClick={() => applyPreset(pb)}
             disabled={isActive}
             title={pb.description}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import type { AppSettings } from '../lib/opencode-client';
-import { CLOUD_MODELS } from '../lib/opencode-client';
+import type { AppSettings } from '../lib/ollama-client';
+import { CLOUD_MODELS } from '../lib/ollama-client';
 
 const OLLAMA_KEYS_URL = 'https://ollama.com/settings/keys';
 

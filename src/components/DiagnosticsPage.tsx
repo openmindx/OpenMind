@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ServerStatus, isCloudModel } from '../lib/opencode-client';
-import type { ModelInfo, RunningModel } from '../lib/opencode-client';
+import { ServerStatus, isCloudModel } from '../lib/ollama-client';
+import type { ModelInfo, RunningModel } from '../lib/ollama-client';
 
 interface EndpointResult {
   url: string;

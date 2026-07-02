@@ -30,7 +30,8 @@ tab — no rebuild required.
 | **Chat** | Single-model streaming conversation |
 | **Boardroom** | Multi-agent consensus — many advisors + a synthesizer ([details](./BOARDROOM.md)) |
 | **Dojo** | Head-to-head model evaluation with a judge + scoreboard ([details](./DOJO.md)) |
-| **Diagnostics** | Server health, model management, endpoint tests, scripts |
+| **Models** | Browse installed models, pull new ones (one-click), start/stop, delete, memory-fit |
+| **Diagnostics** | Server health, endpoint tests, scripts, connection log |
 | **Settings** | Local endpoint + Ollama Cloud key ([details](./SETTINGS.md)) |
 
 ---
@@ -120,6 +121,21 @@ The free tier is **$0** but still needs an ollama.com account + API key. Quick s
 Full details, limits, and troubleshooting: **[SETTINGS.md](./SETTINGS.md)**.
 
 ---
+
+## Models Tab
+
+Browse and manage local models (Ollama registry: [ollama.com/library](https://ollama.com/library)):
+
+- **System Memory** banner — total / free / available. Ollama loads a model only if it fits in
+  **free** memory, so this tells you what will actually run.
+- **Add a Model** — one-click **Pull** from a curated catalog of popular small models (with live
+  download progress), or type any `model:tag` to pull it. A **fit** badge (fits / tight / too large)
+  estimates whether each model will load given current memory.
+- **Installed Models** — search/filter, then per model: **use** (select for Chat), **▶ start / ■ stop**
+  (load/unload from memory), and **🗑 delete** (with confirm).
+
+> Tip: on a low-RAM machine, prefer models the fit badge marks **fits** (e.g. `qwen2.5:1.5b`,
+> `llama3.2:1b`). If a model shows **too large**, it will fail to load with an out-of-memory error.
 
 ## Diagnostics Tab
 

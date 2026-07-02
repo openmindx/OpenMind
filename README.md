@@ -91,7 +91,7 @@ openmind/
 │   │   ├── dojo-client.ts      # streamContestant / streamJudge
 │   │   └── dojo-types.ts       # DojoRubric, JudgeResult, …
 │   └── lib/
-│       └── opencode-client.ts  # All Ollama HTTP: chat stream, tags, ps, status
+│       └── ollama-client.ts  # All Ollama HTTP: chat stream, tags, ps, status
 └── src-tauri/
     ├── src/lib.rs              # get_system_stats, run_diagnostic_script, shutdown
     └── Cargo.toml              # sysinfo + tauri + serde
@@ -175,7 +175,7 @@ Three shell utilities live in `diagnostics/` and can be run from the **Diagnosti
 
 ## Configuration
 
-Edit `src/lib/opencode-client.ts` → `defaultConfig`:
+Edit `src/lib/ollama-client.ts` → `defaultConfig`:
 
 ```typescript
 export const defaultConfig = {

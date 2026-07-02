@@ -26,9 +26,38 @@
   transition: border-color 0.15s, color 0.15s;
 }
 
+/* Default hover (Peer Review + fallback) */
 .br-input__preset-board-btn:hover:not(:disabled) {
   border-color: #4caf50;
   color: #4caf50;
+}
+
+/* Classic Triad → online green */
+.br-input__preset-board-btn--triad:hover:not(:disabled),
+.br-input__preset-board-btn--triad:focus-visible:not(:disabled) {
+  border-color: #4caf50;
+  color: #fff;
+  background: #4caf50;
+}
+
+/* Devil's Court → red */
+.br-input__preset-board-btn--devils:hover:not(:disabled),
+.br-input__preset-board-btn--devils:focus-visible:not(:disabled) {
+  border-color: #f44336;
+  color: #fff;
+  background: #f44336;
+}
+
+/* Full Board → Bitcoin orange */
+.br-input__preset-board-btn--full:hover:not(:disabled),
+.br-input__preset-board-btn--full:focus-visible:not(:disabled) {
+  border-color: #f7931a;
+  color: #1a1a1a;
+  background: #f7931a;
+}
+
+.br-input__preset-board-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .br-input__preset-board-btn:disabled {
@@ -58,14 +87,21 @@
 }
 
 .br-input__select {
-  background: #1a1a1a;
+  background: rgba(76, 175, 80, 0.3);   /* mostly-transparent green */
   border: 1px solid #2a2a2a;
   border-radius: 4px;
-  color: #ccc;
+  color: #0a0a0a;                        /* dark black font */
   font-size: 0.75rem;
   padding: 0.22rem 0.45rem;
   cursor: pointer;
   transition: border-color 0.15s;
+}
+
+/* Keep dropdown option list readable (dark text on light green) */
+.br-input__select option,
+.br-input__preset-select option {
+  color: #0a0a0a;
+  background: #dbf0de;
 }
 
 .br-input__select:hover:not(:disabled),
@@ -175,10 +211,10 @@
 
 .br-input__preset-select {
   font-size: 0.72rem;
-  background: #1a1a1a;
+  background: rgba(76, 175, 80, 0.3);   /* mostly-transparent green */
   border: 1px solid #2a2a2a;
   border-radius: 4px;
-  color: #888;
+  color: #0a0a0a;                        /* dark black font */
   padding: 0.2rem 0.45rem;
   cursor: pointer;
 }
@@ -190,10 +226,10 @@
 
 .br-input__textarea {
   width: 100%;
-  background: #1a1a1a;
+  background: rgba(76, 175, 80, 0.3);   /* mostly-transparent green */
   border: 1px solid #2a2a2a;
   border-radius: 5px;
-  color: #d4d4d4;
+  color: #0a0a0a;                        /* dark black font */
   font-size: 0.85rem;
   font-family: inherit;
   line-height: 1.5;
@@ -204,6 +240,10 @@
   max-height: 200px;
   box-sizing: border-box;
   transition: border-color 0.15s;
+}
+
+.br-input__textarea::placeholder {
+  color: rgba(10, 10, 10, 0.55);
 }
 
 .br-input__textarea:focus {

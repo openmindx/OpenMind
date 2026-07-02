@@ -4,7 +4,7 @@
  */
 
 import { ModelResponse, ModelScore, DojoRubric, BLIND_LABELS } from './dojo-types';
-import { resolveEndpoint } from '../lib/opencode-client';
+import { resolveEndpoint, describeError } from '../lib/ollama-client';
 
 /**
  * Stream a single model response token-by-token via Ollama /api/chat.
@@ -32,7 +32,7 @@ export async function streamModelResponse(
   });
 
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    throw new Error(await describeError(res, model));
   }
 
   const reader = res.body!.getReader();
@@ -134,7 +134,7 @@ INSTRUCTIONS:
     signal: AbortSignal.timeout(120_000),
   });
 
-  if (!res.ok) throw new Error(`Judge request failed: HTTP ${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(`Judge failed — ${await describeError(res, judgeModel)}`);
 
   const data = await res.json();
   const raw: string = data.message?.content ?? data.response ?? '';

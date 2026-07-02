@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
-import { OpenCodeClient, Message, ServerStatus, defaultConfig, getSettings, updateSettings, isCloudModel, CLOUD_MODELS } from "./lib/opencode-client";
-import type { ModelInfo, RunningModel, AppSettings } from "./lib/opencode-client";
+import { OllamaClient, Message, ServerStatus, defaultConfig, getSettings, updateSettings, isCloudModel, CLOUD_MODELS } from "./lib/ollama-client";
+import type { ModelInfo, RunningModel, AppSettings } from "./lib/ollama-client";
 import { MarkdownMessage } from "./components/MarkdownMessage";
 import { DiagnosticsPage } from "./components/DiagnosticsPage";
 import { ModelPicker } from "./components/ModelPicker";
+import { ModelsPage } from "./components/ModelsPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { FloatingChat } from "./components/FloatingChat";
 import { ConnectionStatus } from "./components/ConnectionStatus";
@@ -14,7 +15,7 @@ import type { AppTab } from "./components/NavBar";
 import { DojoPage } from "./dojo";
 import { BoardroomPage } from "./boardroom";
 
-const client = new OpenCodeClient();
+const client = new OllamaClient();
 const POLL_INTERVAL_MS = 15_000;
 const STATS_INTERVAL_MS = 2_000;
 const STORAGE_KEY = 'openmind-messages';
@@ -24,6 +25,9 @@ interface SystemStats {
   cpu_percent: number;
   net_rx_bytes: number;
   net_tx_bytes: number;
+  mem_total_bytes: number;
+  mem_free_bytes: number;
+  mem_available_bytes: number;
 }
 
 function App() {
@@ -367,6 +371,18 @@ function App() {
           connected={connected}
           droppedModel={droppedDojoModel}
           onDropConsumed={() => setDroppedDojoModel(null)}
+        />
+      )}
+
+      {activeTab === 'models' && (
+        <ModelsPage
+          modelDetails={modelDetails}
+          runningModels={runningModels}
+          selectedModel={selectedModel}
+          connected={connected}
+          sysStats={sysStats}
+          onSelect={setSelectedModel}
+          onRefresh={checkServer}
         />
       )}
 
