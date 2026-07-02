@@ -1,9 +1,11 @@
 use std::sync::Mutex;
-use sysinfo::{Networks, System};
+use sysinfo::{Components, Disks, Networks, System};
 
 struct AppState {
     system: Mutex<System>,
     networks: Mutex<Networks>,
+    components: Mutex<Components>,
+    disks: Mutex<Disks>,
 }
 
 #[derive(serde::Serialize)]
@@ -20,6 +22,18 @@ struct SystemStats {
     mem_free_bytes: u64,
     /// Available physical memory in bytes (includes reclaimable cache)
     mem_available_bytes: u64,
+    /// Hottest CPU-package/core temperature in °C (None if no sensor readable)
+    cpu_temp_c: Option<f32>,
+    /// Label of the sensor the temperature came from (e.g. "Package id 0")
+    cpu_temp_label: Option<String>,
+    /// Root filesystem ("/") mount point reported for disk usage
+    disk_mount: String,
+    /// Root filesystem total capacity in bytes
+    disk_total_bytes: u64,
+    /// Root filesystem used bytes (total − available)
+    disk_used_bytes: u64,
+    /// Root filesystem available bytes
+    disk_available_bytes: u64,
 }
 
 #[tauri::command]
@@ -41,6 +55,70 @@ fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
             (rx + n.received(), tx + n.transmitted())
         });
 
+    // CPU temperature — pick the hottest sensor, preferring CPU-package/core labels.
+    let mut comps = state.components.lock().unwrap();
+    comps.refresh();
+    let mut cpu_temp_c: Option<f32> = None;
+    let mut cpu_temp_label: Option<String> = None;
+    let mut best_score = -1i32;
+    for c in comps.iter() {
+        let t = c.temperature();
+        if !t.is_finite() || t <= 0.0 || t > 150.0 {
+            continue;
+        }
+        let label = c.label().to_lowercase();
+        // Prefer real CPU sensors; fall back to any valid reading.
+        let priority = if label.contains("package") || label.contains("tctl") {
+            3
+        } else if label.contains("core") || label.contains("coretemp") {
+            2
+        } else if label.contains("cpu") {
+            1
+        } else {
+            0
+        };
+        // Score prefers higher priority, then higher temperature.
+        let score = priority * 1000 + t as i32;
+        if score > best_score {
+            best_score = score;
+            cpu_temp_c = Some(t);
+            cpu_temp_label = Some(c.label().to_string());
+        }
+    }
+
+    // Disk — report the root "/" filesystem (accurate HD), not external/other mounts.
+    let mut disks = state.disks.lock().unwrap();
+    disks.refresh();
+    let mut disk_mount = String::from("/");
+    let mut disk_total_bytes = 0u64;
+    let mut disk_available_bytes = 0u64;
+    let mut found_root = false;
+    let mut fallback_total = 0u64;
+    let mut fallback_avail = 0u64;
+    let mut fallback_mount = String::new();
+    for d in disks.iter() {
+        let mp = d.mount_point().to_string_lossy().to_string();
+        if mp == "/" {
+            disk_mount = mp;
+            disk_total_bytes = d.total_space();
+            disk_available_bytes = d.available_space();
+            found_root = true;
+            break;
+        }
+        // Track the largest real filesystem as a fallback (e.g. on platforms without "/").
+        if d.total_space() > fallback_total {
+            fallback_total = d.total_space();
+            fallback_avail = d.available_space();
+            fallback_mount = mp;
+        }
+    }
+    if !found_root && fallback_total > 0 {
+        disk_mount = fallback_mount;
+        disk_total_bytes = fallback_total;
+        disk_available_bytes = fallback_avail;
+    }
+    let disk_used_bytes = disk_total_bytes.saturating_sub(disk_available_bytes);
+
     SystemStats {
         cpu_percent,
         net_rx_bytes: rx,
@@ -48,6 +126,12 @@ fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
         mem_total_bytes,
         mem_free_bytes,
         mem_available_bytes,
+        cpu_temp_c,
+        cpu_temp_label,
+        disk_mount,
+        disk_total_bytes,
+        disk_used_bytes,
+        disk_available_bytes,
     }
 }
 
@@ -111,6 +195,8 @@ pub fn run() {
     let state = AppState {
         system: Mutex::new(System::new()),
         networks: Mutex::new(Networks::new_with_refreshed_list()),
+        components: Mutex::new(Components::new_with_refreshed_list()),
+        disks: Mutex::new(Disks::new_with_refreshed_list()),
     };
 
     tauri::Builder::default()

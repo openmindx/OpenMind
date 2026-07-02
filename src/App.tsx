@@ -28,6 +28,12 @@ interface SystemStats {
   mem_total_bytes: number;
   mem_free_bytes: number;
   mem_available_bytes: number;
+  cpu_temp_c: number | null;
+  cpu_temp_label: string | null;
+  disk_mount: string;
+  disk_total_bytes: number;
+  disk_used_bytes: number;
+  disk_available_bytes: number;
 }
 
 function App() {

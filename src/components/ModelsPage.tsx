@@ -23,8 +23,10 @@ interface ModelsPageProps {
   onRefresh: () => void;
 }
 
-// Curated, mostly-small models that run well locally. Sizes are approximate download sizes.
+// Curated catalog of popular Ollama models. Sizes are approximate download sizes.
+// Kept broad so a search like "glm" or "coder" surfaces real candidates.
 const CATALOG: { name: string; size: number; note: string }[] = [
+  // Tiny / small
   { name: 'qwen2.5:0.5b',        size: 0.40e9, note: 'Tiny general model' },
   { name: 'tinyllama:1.1b',      size: 0.64e9, note: 'Very small, fast' },
   { name: 'qwen2.5:1.5b',        size: 0.99e9, note: 'Small general' },
@@ -32,11 +34,31 @@ const CATALOG: { name: string; size: number; note: string }[] = [
   { name: 'deepseek-r1:1.5b',    size: 1.10e9, note: 'Reasoning, distilled' },
   { name: 'llama3.2:1b',         size: 1.30e9, note: 'Meta, compact' },
   { name: 'gemma2:2b',           size: 1.60e9, note: 'Google, small' },
+  { name: 'gemma3:1b',           size: 0.90e9, note: 'Google, tiny' },
   { name: 'llama3.2:3b',         size: 2.00e9, note: 'Meta, balanced' },
   { name: 'phi3:mini',           size: 2.20e9, note: 'Microsoft, 3.8B' },
+  { name: 'phi4-mini',           size: 2.50e9, note: 'Microsoft, 3.8B' },
+  { name: 'smollm2:1.7b',        size: 1.80e9, note: 'Small, efficient' },
   { name: 'nomic-embed-text',    size: 0.27e9, note: 'Embeddings' },
+  // Mid
   { name: 'qwen2.5:7b',          size: 4.70e9, note: 'Capable general' },
+  { name: 'qwen2.5-coder:7b',    size: 4.70e9, note: 'Strong coding' },
   { name: 'llama3.1:8b',         size: 4.90e9, note: 'Meta, strong' },
+  { name: 'mistral:7b',          size: 4.10e9, note: 'Mistral, solid' },
+  { name: 'gemma2:9b',           size: 5.40e9, note: 'Google, capable' },
+  { name: 'gemma3:4b',           size: 3.30e9, note: 'Google, balanced' },
+  { name: 'glm4:9b',             size: 5.50e9, note: 'Zhipu GLM-4, capable' },
+  { name: 'codegemma:7b',        size: 5.00e9, note: 'Google, coding' },
+  { name: 'codellama:7b',        size: 3.80e9, note: 'Meta, coding' },
+  { name: 'deepseek-coder-v2:16b', size: 8.9e9, note: 'Strong coding (MoE)' },
+  { name: 'deepseek-r1:7b',      size: 4.70e9, note: 'Reasoning' },
+  { name: 'yi:9b',               size: 5.00e9, note: '01.AI, bilingual' },
+  { name: 'starcoder2:7b',       size: 4.00e9, note: 'Code completion' },
+  // Larger
+  { name: 'qwen2.5:14b',         size: 9.00e9, note: 'Larger general' },
+  { name: 'phi4',                size: 9.10e9, note: 'Microsoft, 14B' },
+  { name: 'gemma3:12b',          size: 8.10e9, note: 'Google, large' },
+  { name: 'mistral-nemo:12b',    size: 7.10e9, note: 'Mistral, 12B' },
 ];
 
 function fmtSize(bytes: number): string {
@@ -76,13 +98,22 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [memOpen, setMemOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const runningSet = useMemo(() => new Set(runningModels.map(r => r.name)), [runningModels]);
   const runningMap = useMemo(() => new Map(runningModels.map(r => [r.name, r])), [runningModels]);
   const installedNames = useMemo(() => new Set(modelDetails.map(m => m.name)), [modelDetails]);
 
   const filtered = modelDetails.filter(m => m.name.toLowerCase().includes(filter.toLowerCase()));
-  const catalogToShow = CATALOG.filter(c => !installedNames.has(c.name) && c.name.toLowerCase().includes(filter.toLowerCase()));
+  // The Add-a-Model input (pullName) drives the catalog search too.
+  const query = pullName.trim().toLowerCase();
+  const catalogToShow = CATALOG.filter(c =>
+    !installedNames.has(c.name) &&
+    (query === '' || c.name.toLowerCase().includes(query) || c.note.toLowerCase().includes(query))
+  );
+  // If the query looks like a model name and matches nothing installed/catalog, we still offer to pull it.
+  const queryMatchesCatalogExact = CATALOG.some(c => c.name.toLowerCase() === query);
 
   async function doPull(name: string) {
     const trimmed = name.trim();
@@ -110,25 +141,57 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
 
-      {/* Memory banner */}
+      {/* Memory banner — click header to expand full detail */}
       <div style={card}>
-        <div style={cardHeader}><span>System Memory</span></div>
+        <div
+          style={{ ...cardHeader, cursor: 'pointer' }}
+          onClick={() => setMemOpen(o => !o)}
+          title="Show system memory detail"
+        >
+          <span>System Memory {sysStats ? `· ${fmtSize(sysStats.mem_free_bytes)} free of ${fmtSize(sysStats.mem_total_bytes)}` : ''}</span>
+          <span style={{ color: '#888' }}>{memOpen ? '▲' : '▼'}</span>
+        </div>
         <div style={{ padding: '0.75rem 1rem' }}>
-          {sysStats ? (
-            <>
-              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-                <span>Total: <b style={{ color: '#ccc' }}>{fmtSize(sysStats.mem_total_bytes)}</b></span>
-                <span>Free: <b style={{ color: sysStats.mem_free_bytes < 1e9 ? '#ff8a80' : '#4caf50' }}>{fmtSize(sysStats.mem_free_bytes)}</b></span>
-                <span>Available: <b style={{ color: '#9fc8f0' }}>{fmtSize(sysStats.mem_available_bytes)}</b></span>
-              </div>
-              <div style={{ marginTop: '0.5rem', fontSize: '0.74rem', color: '#777' }}>
-                Ollama loads a model only if it fits in <b>free</b> memory (it needs noticeably more than the on-disk size).
-                Fit badges below are estimates.
-              </div>
-            </>
-          ) : (
-            <span style={{ color: '#666', fontSize: '0.82rem' }}>Memory stats unavailable (Tauri backend not running).</span>
-          )}
+          {!sysStats ? (
+            <span style={{ color: '#888', fontSize: '0.82rem' }}>Memory stats unavailable (Tauri backend not running).</span>
+          ) : (() => {
+            const total = sysStats.mem_total_bytes;
+            const free = sysStats.mem_free_bytes;
+            const avail = sysStats.mem_available_bytes;
+            const used = Math.max(0, total - avail);
+            const cache = Math.max(0, avail - free);
+            const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0;
+            return (
+              <>
+                {/* usage bar: used | cache (reclaimable) | free */}
+                <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', background: '#111', border: '1px solid #2a2a2a' }}>
+                  <div style={{ width: `${pct(used)}%`, background: '#c0564f' }} title={`Used ${fmtSize(used)}`} />
+                  <div style={{ width: `${pct(cache)}%`, background: '#5a6a7a' }} title={`Cache/reclaimable ${fmtSize(cache)}`} />
+                  <div style={{ width: `${pct(free)}%`, background: '#4caf50' }} title={`Free ${fmtSize(free)}`} />
+                </div>
+                <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.82rem', marginTop: '0.55rem' }}>
+                  <span>Total: <b style={{ color: '#ddd' }}>{fmtSize(total)}</b></span>
+                  <span>Used: <b style={{ color: '#e59a94' }}>{fmtSize(used)}</b> <span style={{ color: '#666' }}>({pct(used)}%)</span></span>
+                  <span>Free: <b style={{ color: free < 1e9 ? '#ff8a80' : '#4caf50' }}>{fmtSize(free)}</b> <span style={{ color: '#666' }}>({pct(free)}%)</span></span>
+                  <span>Available: <b style={{ color: '#9fc8f0' }}>{fmtSize(avail)}</b></span>
+                </div>
+
+                {memOpen && (
+                  <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a2a', paddingTop: '0.65rem', fontSize: '0.8rem', color: '#bbb', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem 1.25rem' }}>
+                    <span>Legend: <span style={{ color: '#c0564f' }}>■</span> used · <span style={{ color: '#7a8a9a' }}>■</span> reclaimable cache · <span style={{ color: '#4caf50' }}>■</span> free</span>
+                    <span>Reclaimable cache: <b style={{ color: '#9aabbb' }}>{fmtSize(cache)}</b></span>
+                    <span>Free (hard): <b style={{ color: '#ccc' }}>{fmtSize(free)}</b> — what Ollama checks</span>
+                    <span>Available (incl. cache): <b style={{ color: '#ccc' }}>{fmtSize(avail)}</b></span>
+                  </div>
+                )}
+
+                <div style={{ marginTop: '0.6rem', fontSize: '0.74rem', color: '#888' }}>
+                  Ollama loads a model only if it fits in <b>free</b> memory (it needs noticeably more than the on-disk
+                  size). Fit badges below are estimates.
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -139,9 +202,17 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
         </div>
       )}
 
-      {/* Add a model */}
+      {/* Add a model — click header to open search + install */}
       <div style={card}>
-        <div style={cardHeader}><span>Add a Model</span></div>
+        <div
+          style={{ ...cardHeader, cursor: 'pointer' }}
+          onClick={() => setAddOpen(o => !o)}
+          title="Search and install models"
+        >
+          <span>＋ Add a Model</span>
+          <span style={{ color: '#888' }}>{addOpen ? '▲ close' : '▼ search / install'}</span>
+        </div>
+        {addOpen && (
         <div style={{ padding: '0.75rem 1rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
             <input
@@ -149,7 +220,7 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
               value={pullName}
               onChange={e => setPullName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { doPull(pullName); setPullName(''); } }}
-              placeholder="Pull any model by name, e.g. mistral:7b"
+              placeholder="Search or type a model to install… e.g. glm, coder, qwen2.5-coder:7b"
               spellCheck={false}
               disabled={!connected}
             />
@@ -158,7 +229,7 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
               disabled={!connected || !pullName.trim()}
               onClick={() => { doPull(pullName); setPullName(''); }}
             >
-              ⬇ Pull
+              ⬇ Install
             </button>
           </div>
 
@@ -178,10 +249,27 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
           ))}
 
           {/* Catalog */}
-          <div style={{ fontSize: '0.73rem', color: '#666', margin: '0.5rem 0 0.4rem' }}>Popular models (one-click pull):</div>
+          <div style={{ fontSize: '0.73rem', color: '#888', margin: '0.5rem 0 0.4rem' }}>
+            {query ? `Matches for “${pullName.trim()}” (one-click install):` : 'Popular models (one-click install):'}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '0.5rem' }}>
             {catalogToShow.length === 0 ? (
-              <span style={{ color: '#555', fontSize: '0.8rem' }}>All catalog models installed (or filtered out).</span>
+              query && !queryMatchesCatalogExact ? (
+                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <span style={{ color: '#bbb', fontSize: '0.82rem' }}>
+                    No catalog match for “{pullName.trim()}”. If it exists on the Ollama registry you can install it directly:
+                  </span>
+                  <button
+                    style={{ ...btn, opacity: connected ? 1 : 0.5 }}
+                    disabled={!connected}
+                    onClick={() => { doPull(pullName); }}
+                  >
+                    ⬇ Install “{pullName.trim()}”
+                  </button>
+                </div>
+              ) : (
+                <span style={{ color: '#888', fontSize: '0.8rem' }}>All catalog models already installed.</span>
+              )
             ) : catalogToShow.map(c => {
               const fit = fitBadge(c.size, sysStats);
               const pulling = pulls[c.name] && !pulls[c.name].done;
@@ -207,6 +295,7 @@ export function ModelsPage({ modelDetails, runningModels, selectedModel, connect
             })}
           </div>
         </div>
+        )}
       </div>
 
       {/* Installed models */}
