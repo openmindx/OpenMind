@@ -1,6 +1,6 @@
 import './NavBar.css';
 
-export type AppTab = 'chat' | 'boardroom' | 'dojo' | 'diagnostics' | 'settings';
+export type AppTab = 'chat' | 'boardroom' | 'dojo' | 'models' | 'diagnostics' | 'settings';
 
 interface TabDef {
   id: AppTab;
@@ -14,6 +14,7 @@ const TABS: TabDef[] = [
   { id: 'chat',        label: 'Chat',        glyph: '◉', color: '#4d94ff', desc: 'Single-model conversation' },
   { id: 'boardroom',   label: 'Boardroom',   glyph: '⬡', color: '#4caf50', desc: 'Multi-agent consensus' },
   { id: 'dojo',        label: 'Dojo',        glyph: '⊠', color: '#ab47bc', desc: 'Head-to-head evaluation' },
+  { id: 'models',      label: 'Models',      glyph: '⬢', color: '#26a69a', desc: 'Browse, pull & manage models' },
   { id: 'diagnostics', label: 'Diagnostics', glyph: '◈', color: '#ffa726', desc: 'System & server health' },
   { id: 'settings',    label: 'Settings',    glyph: '⚙', color: '#78909c', desc: 'Endpoints & cloud models' },
 ];

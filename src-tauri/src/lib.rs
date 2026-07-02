@@ -14,13 +14,23 @@ struct SystemStats {
     net_rx_bytes: u64,
     /// Bytes transmitted across all non-loopback interfaces since last call
     net_tx_bytes: u64,
+    /// Total physical memory in bytes
+    mem_total_bytes: u64,
+    /// Free physical memory in bytes (approximates what Ollama checks when loading a model)
+    mem_free_bytes: u64,
+    /// Available physical memory in bytes (includes reclaimable cache)
+    mem_available_bytes: u64,
 }
 
 #[tauri::command]
 fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
     let mut sys = state.system.lock().unwrap();
     sys.refresh_cpu_usage();
+    sys.refresh_memory();
     let cpu_percent = sys.global_cpu_usage();
+    let mem_total_bytes = sys.total_memory();
+    let mem_free_bytes = sys.free_memory();
+    let mem_available_bytes = sys.available_memory();
 
     let mut nets = state.networks.lock().unwrap();
     nets.refresh();
@@ -35,6 +45,9 @@ fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
         cpu_percent,
         net_rx_bytes: rx,
         net_tx_bytes: tx,
+        mem_total_bytes,
+        mem_free_bytes,
+        mem_available_bytes,
     }
 }
 

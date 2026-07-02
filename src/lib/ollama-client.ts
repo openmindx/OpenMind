@@ -36,6 +36,13 @@ export interface RunningModel {
   expiresAt: string;
 }
 
+export interface PullProgress {
+  status: string;         // e.g. "pulling manifest", "downloading", "success"
+  completed: number;      // bytes downloaded so far
+  total: number;          // total bytes for the current layer
+  percent: number | null; // 0–100, or null when total is unknown
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 export interface AppSettings {
@@ -113,17 +120,46 @@ export function resolveEndpoint(model: string): { url: string; headers: Record<s
   };
 }
 
+// ─── Error formatting ─────────────────────────────────────────────────────────
+
+/** Turn a raw Ollama error string into something actionable for the user. */
+export function prettyOllamaError(raw: string, model: string): string {
+  const src = isCloudModel(model) ? 'Ollama Cloud' : 'Ollama';
+  const msg = raw.trim();
+  // Common local failure: not enough RAM/VRAM to load the model.
+  if (/more system memory|requires more|out of memory|not enough memory/i.test(msg)) {
+    return `${msg} — this model is too large for the available memory. Try a smaller model (Start it from the picker first), free up RAM, or use a cloud model.`;
+  }
+  if (isCloudModel(model) && /unauthorized|401|403/i.test(msg)) {
+    return `${msg} — check your Ollama Cloud API key in Settings.`;
+  }
+  return `${src}: ${msg}`;
+}
+
+/** Extract the best error message from a non-OK Response (reads the JSON `error` field). */
+export async function describeError(response: Response, model: string): Promise<string> {
+  let detail = '';
+  try {
+    const text = await response.text();
+    try { detail = JSON.parse(text)?.error ?? text; } catch { detail = text; }
+  } catch { /* body already consumed / unreadable */ }
+  detail = (detail || '').toString().trim();
+  if (detail) return prettyOllamaError(detail, model);
+  const src = isCloudModel(model) ? 'Ollama Cloud' : 'Ollama';
+  return `${src} error ${response.status} ${response.statusText}`;
+}
+
 // ─── Client ──────────────────────────────────────────────────────────────────
 
-export interface OpenCodeConfig {
+export interface OllamaConfig {
   model: string;
 }
 
-export const defaultConfig: OpenCodeConfig = {
+export const defaultConfig: OllamaConfig = {
   model: 'llama3.2:latest',
 };
 
-export class OpenCodeClient {
+export class OllamaClient {
   /**
    * Stream a response token-by-token via Ollama /api/chat.
    * Routes to the local server or Ollama Cloud based on the model name.
@@ -146,7 +182,7 @@ export class OpenCodeClient {
     });
 
     if (!response.ok) {
-      throw new Error(`${isCloudModel(model) ? 'Ollama Cloud' : 'Ollama'} responded ${response.status} ${response.statusText}`);
+      throw new Error(await describeError(response, model));
     }
 
     const reader = response.body!.getReader();
@@ -163,9 +199,15 @@ export class OpenCodeClient {
         if (!line.trim()) continue;
         try {
           const data = JSON.parse(line);
+          // Ollama can report a fatal error mid-stream (HTTP 200 with an error line).
+          if (data.error) throw new Error(prettyOllamaError(String(data.error), model));
           if (data.message?.content) onToken(data.message.content);
           if (data.done) return;
-        } catch { /* ignore malformed lines */ }
+        } catch (err) {
+          // Re-throw real errors; ignore only JSON parse failures on partial lines.
+          if (err instanceof SyntaxError) continue;
+          throw err;
+        }
       }
     }
   }
@@ -283,5 +325,65 @@ export class OpenCodeClient {
       signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) throw new Error(`Failed to stop ${model}: ${res.status} ${res.statusText}`);
+  }
+
+  /**
+   * Pull (download) a model from the Ollama registry, streaming progress.
+   * `onProgress` receives { status, completed, total, percent } as the download proceeds.
+   */
+  async pullModel(
+    name: string,
+    onProgress: (p: PullProgress) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: name, stream: true }),
+      signal: signal ?? AbortSignal.timeout(30 * 60_000), // downloads can be large
+    });
+    if (!res.ok) throw new Error(await describeError(res, name));
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+          if (data.error) throw new Error(prettyOllamaError(String(data.error), name));
+          const total = data.total ?? 0;
+          const completed = data.completed ?? 0;
+          onProgress({
+            status: data.status ?? '',
+            completed,
+            total,
+            percent: total > 0 ? Math.round((completed / total) * 100) : null,
+          });
+        } catch (err) {
+          if (err instanceof SyntaxError) continue;
+          throw err;
+        }
+      }
+    }
+  }
+
+  /** Delete a local model from disk. */
+  async deleteModel(name: string): Promise<void> {
+    const base = liveSettings.localUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/delete`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: name, name }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(await describeError(res, name));
   }
 }

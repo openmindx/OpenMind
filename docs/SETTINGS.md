@@ -4,7 +4,7 @@
 
 The **Settings** tab (⚙ in the nav) configures where OpenMind sends requests. All values persist to
 `localStorage` (`openmind-settings`) and apply **immediately** — no restart. Routing is centralized
-in `resolveEndpoint(model)` in `src/lib/opencode-client.ts`.
+in `resolveEndpoint(model)` in `src/lib/ollama-client.ts`.
 
 ---
 

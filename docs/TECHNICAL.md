@@ -29,11 +29,12 @@ OpenMind/
 │   ├── App.tsx                   # Root component — top-level state, chat, tabs
 │   ├── main.tsx                  # React entry point
 │   ├── lib/
-│   │   └── opencode-client.ts    # Settings layer + all Ollama HTTP calls + routing
+│   │   └── ollama-client.ts    # Settings layer + all Ollama HTTP calls + routing
 │   ├── components/
 │   │   ├── NavBar.tsx            # Tab bar (chat / boardroom / dojo / diagnostics / settings)
 │   │   ├── ConnectionStatus.tsx  # Header online/offline widget
 │   │   ├── ModelPicker.tsx       # Model dropdown + start/stop + cloud badges
+│   │   ├── ModelsPage.tsx        # Browse/pull/start/stop/delete models + memory-fit (Models tab)
 │   │   ├── SettingsPage.tsx      # Endpoint + cloud key config (Settings tab)
 │   │   ├── DiagnosticsPage.tsx   # Diagnostics tab (probes, model mgmt, scripts, log)
 │   │   ├── FloatingChat.tsx      # Detachable per-model chat window
@@ -75,7 +76,7 @@ OpenMind/
 | `runningModels` | `RunningModel[]` | In-memory | Loaded models from `/api/ps` |
 | `busyModel` | `string \| null` | In-memory | Model currently loading/unloading |
 | `sysStats` | `SystemStats \| null` | In-memory | CPU % + net rx/tx from Rust |
-| `activeTab` | `AppTab` | In-memory | `chat \| boardroom \| dojo \| diagnostics \| settings` |
+| `activeTab` | `AppTab` | In-memory | `chat \| boardroom \| dojo \| models \| diagnostics \| settings` |
 
 **Derived values:** `displayModels = [...models, ...cloudModels]` (cloud entries appended when
 enabled + keyed); `canInteract = connected || (selectedIsCloud && hasKey)` — cloud models are
@@ -98,7 +99,7 @@ usable even when the local server is offline.
 
 ---
 
-## lib/opencode-client.ts
+## lib/ollama-client.ts
 
 This module owns **settings, endpoint routing, and all HTTP calls**. Settings are read *live*
 on every request, so edits in the Settings tab apply immediately (no restart).
@@ -138,6 +139,12 @@ it, so a cloud model works everywhere without per-call URL threading.
 | `getRunningModels()` | `GET /api/ps` | Models currently loaded in memory/VRAM |
 | `loadModel(name)` | `POST /api/generate` | `keep_alive:-1` — start/pin a **local** model (no-op for cloud) |
 | `unloadModel(name)` | `POST /api/generate` | `keep_alive:0` — stop/evict a **local** model |
+| `pullModel(name, onProgress)` | `POST /api/pull` | Download a model, streaming `{status, completed, total, percent}` |
+| `deleteModel(name)` | `DELETE /api/delete` | Remove a model from disk |
+
+Errors are normalized by `describeError()` / `prettyOllamaError()`, which read Ollama's JSON `error`
+field and add guidance (e.g. an out-of-memory failure suggests a smaller or cloud model) instead of
+surfacing a bare `500`.
 
 Health checks use `/api/tags` because Ollama has no dedicated `/health` route — a 200 means up.
 
@@ -170,13 +177,17 @@ struct AppState {
 
 ```rust
 struct SystemStats {
-    cpu_percent:  f32,  // global CPU usage 0–100
-    net_rx_bytes: u64,  // bytes received (non-loopback) since last poll
-    net_tx_bytes: u64,  // bytes transmitted (non-loopback) since last poll
+    cpu_percent:         f32,  // global CPU usage 0–100
+    net_rx_bytes:        u64,  // bytes received (non-loopback) since last poll
+    net_tx_bytes:        u64,  // bytes transmitted (non-loopback) since last poll
+    mem_total_bytes:     u64,  // total physical memory
+    mem_free_bytes:      u64,  // free memory (≈ what Ollama checks when loading a model)
+    mem_available_bytes: u64,  // available memory (includes reclaimable cache)
 }
 ```
 
-Network figures are **deltas per 2 s poll**; the frontend divides by 2 for bytes/sec.
+Network figures are **deltas per 2 s poll**; the frontend divides by 2 for bytes/sec. The memory
+fields feed the **Models** tab's fit indicator (model size vs. free RAM).
 
 ---
 
@@ -200,21 +211,21 @@ See [SETTINGS.md](./SETTINGS.md) for the Ollama Cloud free tier and key setup.
 
 | Setting | Value | Location |
 |---------|-------|----------|
-| Local Ollama URL | `http://localhost:11434` | `opencode-client.ts` → `defaultSettings.localUrl` |
-| Cloud base URL | `https://ollama.com` | `opencode-client.ts` → `defaultSettings.cloudBaseUrl` |
-| Cloud models | `gpt-oss:20b`, `gpt-oss:120b` | `opencode-client.ts` → `CLOUD_MODELS` |
-| Default model | `llama3.2:latest` | `opencode-client.ts` → `defaultConfig.model` |
+| Local Ollama URL | `http://localhost:11434` | `ollama-client.ts` → `defaultSettings.localUrl` |
+| Cloud base URL | `https://ollama.com` | `ollama-client.ts` → `defaultSettings.cloudBaseUrl` |
+| Cloud models | `gpt-oss:20b`, `gpt-oss:120b` | `ollama-client.ts` → `CLOUD_MODELS` |
+| Default model | `llama3.2:latest` | `ollama-client.ts` → `defaultConfig.model` |
 | Vite dev port | `1420` | `vite.config.ts` (required by Tauri) |
 | App identifier | `boardroom.pythai.net` | `tauri.conf.json` |
 | Product name | `openmind` | `tauri.conf.json` |
 | Window | `OpenMind`, 800×600 | `tauri.conf.json` |
 | History key | `openmind-messages` | `App.tsx` → `STORAGE_KEY` |
 | Model key | `openmind-model` | `App.tsx` → `MODEL_KEY` |
-| Settings key | `openmind-settings` | `opencode-client.ts` → `SETTINGS_KEY` |
+| Settings key | `openmind-settings` | `ollama-client.ts` → `SETTINGS_KEY` |
 | Server poll | 15 000 ms | `App.tsx` → `POLL_INTERVAL_MS` |
 | Stats poll | 2 000 ms | `App.tsx` → `STATS_INTERVAL_MS` |
-| Chat timeout | 120 000 ms | `opencode-client.ts` |
-| Health timeout | 5 000 ms | `opencode-client.ts` → `getServerStatus` |
+| Chat timeout | 120 000 ms | `ollama-client.ts` |
+| Health timeout | 5 000 ms | `ollama-client.ts` → `getServerStatus` |
 
 ---
 
@@ -226,6 +237,8 @@ See [SETTINGS.md](./SETTINGS.md) for the Ollama Cloud free tier and key setup.
 | `/api/tags` | GET | Health probe, model list, model details |
 | `/api/ps` | GET | Running-model list (VRAM/expiry) |
 | `/api/generate` | POST | Model start (`keep_alive:-1`) / stop (`keep_alive:0`) |
+| `/api/pull` | POST | Models tab — download a model (streaming progress) |
+| `/api/delete` | DELETE | Models tab — remove a model from disk |
 | `/api/version` | GET | Diagnostics — Ollama version |
 
 ---

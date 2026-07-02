@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ModelInfo, RunningModel } from '../lib/opencode-client';
-import { isCloudModel } from '../lib/opencode-client';
+import type { ModelInfo, RunningModel } from '../lib/ollama-client';
+import { isCloudModel } from '../lib/ollama-client';
 import './ModelPicker.css';
 
 function fmtSize(bytes: number): string {

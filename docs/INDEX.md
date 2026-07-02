@@ -68,7 +68,7 @@ Key components:
 OpenMind Desktop (Tauri 2)
 ├── Frontend (React 19 / TypeScript)
 │   ├── App.tsx                  — chat UI, model picker, streaming, tabs, settings state
-│   ├── lib/opencode-client.ts   — settings + endpoint routing + Ollama HTTP client
+│   ├── lib/ollama-client.ts   — settings + endpoint routing + Ollama HTTP client
 │   ├── boardroom/               — Boardroom multi-agent consensus module
 │   │   ├── BoardroomPage.tsx    — orchestrator: fan-out, synthesize, abort
 │   │   ├── boardroom-client.ts  — streamAgentResponse(), streamConsensus()
@@ -121,8 +121,12 @@ Local base URL (default): `http://localhost:11434` · Cloud base URL: `https://o
 | `/api/version` | GET | Server version string |
 | `/api/ps` | GET | Running (loaded) models |
 | `/api/generate` | POST | Start (`keep_alive:-1`) / stop (`keep_alive:0`) a local model |
+| `/api/pull` | POST | Download (pull) a model from the registry, streaming progress |
+| `/api/delete` | DELETE | Remove a model from disk |
 | `/api/chat` | POST | Streaming chat (full history); cloud adds a Bearer header |
 | `/v1/models` | GET | OpenAI-compatible model list |
+
+All routes above are part of the official [Ollama REST API](https://github.com/ollama/ollama/blob/main/docs/api.md).
 
 ---
 
@@ -139,7 +143,7 @@ Cloud models (when enabled with a key): `gpt-oss:20b`, `gpt-oss:120b`. See [SETT
 
 | File | Purpose |
 |------|---------|
-| `src/lib/opencode-client.ts` | `defaultSettings` (local/cloud URLs, key), `CLOUD_MODELS`, default model, timeouts |
+| `src/lib/ollama-client.ts` | `defaultSettings` (local/cloud URLs, key), `CLOUD_MODELS`, default model, timeouts |
 | Settings tab (→ `localStorage` `openmind-settings`) | Runtime endpoint + cloud key overrides |
 | `src-tauri/tauri.conf.json` | App name, window size, dev URL, bundle |
 | `src-tauri/capabilities/default.json` | Permissions (core + opener) |
@@ -200,12 +204,23 @@ See [ROADMAP.md](./ROADMAP.md) for the full todo checklist. Highlights:
 
 ## External Resources
 
+### Ollama (the engine OpenMind is built on)
+
+- [Ollama — GitHub org](https://github.com/ollama) — source for the server, CLI, and official libraries
+- [ollama/ollama](https://github.com/ollama/ollama) — main repo; see [`docs/api.md`](https://github.com/ollama/ollama/blob/main/docs/api.md) for the REST API OpenMind uses (`/api/chat`, `/api/tags`, `/api/ps`, `/api/generate`, `/api/pull`, `/api/delete`)
+- [Ollama docs](https://docs.ollama.com) · [Model library](https://ollama.com/library) · [Cloud](https://docs.ollama.com/cloud)
+- [ollama-js](https://github.com/ollama/ollama-js) · [ollama-python](https://github.com/ollama/ollama-python) — official client libraries
+
+### Awesome-Ollama (curated ecosystem lists)
+
+- [yankchina/awesome-ollama](https://github.com/yankchina/awesome-ollama) — curated resources, libraries, and tools for Ollama
+- [EndoTheDev/Awesome-Ollama](https://github.com/EndoTheDev/Awesome-Ollama) — opinionated list of Ollama web/desktop UIs, frameworks, libraries, and software
+
+### Other
+
 - [Tauri Documentation](https://tauri.app)
-- [Ollama Documentation](https://ollama.ai/docs)
-- [OpenCode (StackBlitz)](https://github.com/stackblitz/opencode)
-- [Vercel AI SDK](https://sdk.vercel.ai)
-- [MCP Protocol](https://modelcontextprotocol.io)
+- [React](https://react.dev) · [Vite](https://vite.dev)
 
 ---
 
-*Last updated: 2026-07-01 — Settings tab, cloud routing, model start/stop*
+*Last updated: 2026-07-01 — Models tab, model pull/delete, memory-fit, error surfacing, ollama-client rename*
